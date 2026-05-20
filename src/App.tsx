@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 
 import { GlobalSearchInput } from './components/global-search-input';
+import { WalletConnectButton } from './components/wallet-connect-button';
 import { TutorialOverlay, useTutorial } from './components/tutorial-overlay';
 import { useLocalStorage } from './lib/use-local-storage';
 import { useDebounce } from './lib/use-debounce';
@@ -123,6 +124,7 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              <WalletConnectButton />
               <button
                 onClick={openTutorial}
                 className="focus-ring h-8 w-8 inline-flex items-center justify-center rounded-md text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
