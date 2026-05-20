@@ -4,11 +4,14 @@ import { BrowserRouter } from 'react-router-dom';
 
 import './globals.css';
 import App from './App';
+import { WalletProvider } from './lib/wallet/wallet-provider';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <WalletProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </WalletProvider>
   </StrictMode>,
 );
