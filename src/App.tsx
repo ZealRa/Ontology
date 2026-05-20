@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 
 import { GlobalSearchInput } from './components/global-search-input';
-import { WalletConnectButton } from './components/wallet-connect-button';
+import { WalletConnectButton } from './components/wallet/wallet-connect-button';
 import { TutorialOverlay, useTutorial } from './components/tutorial-overlay';
 import { useLocalStorage } from './lib/use-local-storage';
 import { useDebounce } from './lib/use-debounce';
