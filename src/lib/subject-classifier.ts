@@ -43,9 +43,9 @@ export function classifySubject(input: string): ClassificationResult {
     return { detectedType: 'Thing', confidence: 'medium' };
   }
 
-  // ENS name
+  // ENS name — likely an Intuition account profile
   if (trimmed.endsWith('.eth')) {
-    return { detectedType: 'EthereumAccount', confidence: 'medium' };
+    return { detectedType: 'Account', confidence: 'medium' };
   }
 
   // Default — likely a person or entity name, let user pick

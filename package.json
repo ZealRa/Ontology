@@ -13,6 +13,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@0xintuition/graphql": "^2.0.2",
+    "@0xintuition/sdk": "^2.0.2",
     "@privy-io/react-auth": "^3.27.0",
     "@privy-io/wagmi": "^4.0.8",
     "@tanstack/react-query": "^5.100.11",
