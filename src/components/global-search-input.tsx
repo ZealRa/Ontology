@@ -20,7 +20,7 @@ export function GlobalSearchInput({ value, onChange, inputRef }: GlobalSearchInp
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search entities, predicates, claims..."
+        placeholder="Search schema + on-chain atoms/triples…"
         className="focus-ring w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-9 pr-9 py-1.5 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] transition-colors focus:border-[var(--color-accent)]"
         aria-label="Global search"
       />

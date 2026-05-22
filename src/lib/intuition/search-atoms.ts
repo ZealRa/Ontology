@@ -1,51 +1,18 @@
 import { globalSearch } from '@0xintuition/sdk';
 
+import { atomDisplayLabel } from './protocol-labels';
 import type { AtomSuggestion } from './types';
 
 const MIN_CLOSE_MATCHES = 3;
 const MAX_SUGGESTIONS = 8;
 const STRICT_FETCH_LIMIT = 20;
 const BROAD_FETCH_LIMIT = 35;
-const CLOSE_MATCH_SCORE = 50;
 
 type ScoredSuggestion = AtomSuggestion & { score: number };
 
-function atomDisplayLabel(atom: {
-  label?: string | null;
-  data?: string | null;
-  value?: {
-    thing?: { name?: string | null } | null;
-    person?: { name?: string | null } | null;
-    organization?: { name?: string | null } | null;
-  } | null;
-}): string {
-  return (
-    atom.label?.trim() ||
-    atom.value?.thing?.name?.trim() ||
-    atom.value?.person?.name?.trim() ||
-    atom.value?.organization?.name?.trim() ||
-    atom.data?.trim()?.slice(0, 80) ||
-    'Unlabeled atom'
-  );
-}
+import { CLOSE_MATCH_SCORE, relevanceScore } from './relevance';
 
-/** Higher = closer to the user input. */
-export function relevanceScore(label: string, query: string): number {
-  const normalizedLabel = label.toLowerCase().trim();
-  const normalizedQuery = query.toLowerCase().trim();
-  if (!normalizedQuery) return 0;
-
-  if (normalizedLabel === normalizedQuery) return 100;
-  if (normalizedLabel.startsWith(normalizedQuery)) return 85;
-
-  const words = normalizedLabel.split(/\s+/);
-  if (words.some((word) => word.startsWith(normalizedQuery))) return 70;
-  if (words.some((word) => word === normalizedQuery)) return 65;
-
-  if (normalizedLabel.includes(normalizedQuery)) return 45;
-
-  return 0;
-}
+export { relevanceScore };
 
 async function fetchAtomSuggestions(
   likeStr: string,

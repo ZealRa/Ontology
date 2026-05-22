@@ -268,7 +268,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
             <AtomSuggestions
               fieldLabel="subject"
               query={subject}
-              enabled={hasSubject && canSubmit}
+              enabled={hasSubject}
               selection={subjectAtom}
               onSelectExisting={(suggestion) =>
                 setSubjectAtom({
@@ -297,7 +297,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
             <AtomSuggestions
               fieldLabel="predicate"
               query={predicateId ? predicateSearchQuery(predicateId) : ''}
-              enabled={hasPredicate && canSubmit}
+              enabled={hasPredicate}
               selection={predicateAtom}
               onSelectExisting={(suggestion) =>
                 setPredicateAtom({
@@ -328,7 +328,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
             <AtomSuggestions
               fieldLabel="object"
               query={object}
-              enabled={hasPredicate && Boolean(object.trim()) && canSubmit}
+              enabled={hasPredicate && Boolean(object.trim())}
               selection={objectAtom}
               onSelectExisting={(suggestion) =>
                 setObjectAtom({

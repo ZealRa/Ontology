@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 
 import { GlobalSearchInput } from './components/global-search-input';
+import { ProtocolSearchResults } from './components/protocol-search-results';
 import { WalletConnectButton } from './components/wallet/wallet-connect-button';
 import { TutorialOverlay, useTutorial } from './components/tutorial-overlay';
 import { useLocalStorage } from './lib/use-local-storage';
@@ -109,7 +110,7 @@ export default function App() {
                   Matrix
                 </NavLink>
                 <NavLink to="/glossary" className={navLinkClass}>
-                  Glossary
+                  Protocol
                 </NavLink>
               </nav>
             </div>
@@ -143,6 +144,10 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {debouncedSearchQuery.trim().length >= 2 && (
+          <ProtocolSearchResults query={debouncedSearchQuery} />
+        )}
 
         <SharedBatchFromHash />
 
