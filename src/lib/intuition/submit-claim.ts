@@ -1,11 +1,12 @@
-import {
-  createAtomFromString,
-  createTripleStatement,
-  multiVaultGetTripleCost,
-} from '@0xintuition/sdk';
-import type { WriteConfig } from '@0xintuition/protocol';
+import type { WriteConfig } from '@0xintuition/sdk';
 
 import type { ClaimEntry } from '../../types';
+import {
+  assertSufficientTrustBalance,
+  estimateClaimOnchainCost,
+  writeAtomFromLabel,
+  writeTripleFromTermIds,
+} from './protocol-write';
 import type { ProtocolAtomResolution, SubmitClaimResult } from './types';
 
 async function resolveAtom(
@@ -17,12 +18,7 @@ async function resolveAtom(
     return resolution.termId;
   }
 
-  onProgress?.(`Creating atom «${resolution.label}»…`);
-  const created = await createAtomFromString(
-    config,
-    resolution.label as `${string}`
-  );
-  return created.state.termId;
+  return writeAtomFromLabel(config, resolution.label, onProgress);
 }
 
 export async function submitClaimOnchain(
@@ -40,31 +36,30 @@ export async function submitClaimOnchain(
     throw new Error('Predicate label is required for on-chain submission.');
   }
 
+  onProgress?.('Checking TRUST balance…');
+  const estimatedCost = await estimateClaimOnchainCost(
+    config,
+    subjectResolution,
+    predicateResolution,
+    objectResolution
+  );
+  await assertSufficientTrustBalance(config, estimatedCost);
+
   const subjectTermId = await resolveAtom(config, subjectResolution, onProgress);
   const predicateTermId = await resolveAtom(config, predicateResolution, onProgress);
   const objectTermId = await resolveAtom(config, objectResolution, onProgress);
 
-  onProgress?.('Creating triple on Intuition…');
-
-  const tripleCost = await multiVaultGetTripleCost(config);
-
-  const triple = await createTripleStatement(config, {
-    args: [
-      [subjectTermId],
-      [predicateTermId],
-      [objectTermId],
-      [0n],
-    ],
-    value: tripleCost,
-  });
-
-  const firstEvent = triple.state[0];
-  if (!firstEvent?.args?.termId) {
-    throw new Error('Triple created but term id was not found in the receipt.');
-  }
+  const { tripleTransactionHash, tripleTermId } = await writeTripleFromTermIds(
+    config,
+    subjectTermId,
+    predicateTermId,
+    objectTermId,
+    onProgress
+  );
 
   return {
-    tripleTransactionHash: triple.transactionHash,
+    tripleTransactionHash,
+    tripleTermId,
     subjectTermId,
     predicateTermId,
     objectTermId,

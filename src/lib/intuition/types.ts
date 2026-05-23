@@ -17,6 +17,7 @@ export type AtomSuggestion = {
 
 export type SubmitClaimResult = {
   tripleTransactionHash: `0x${string}`;
+  tripleTermId: `0x${string}`;
   subjectTermId: `0x${string}`;
   predicateTermId: `0x${string}`;
   objectTermId: `0x${string}`;

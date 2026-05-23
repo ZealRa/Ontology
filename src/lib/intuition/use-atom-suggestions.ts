@@ -13,7 +13,7 @@ export function useAtomSuggestions(query: string, enabled: boolean) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || debouncedQuery.trim().length < 2) {
+    if (!enabled || debouncedQuery.trim().length < 1) {
       setSuggestions([]);
       setBroadened(false);
       setIsSearching(false);

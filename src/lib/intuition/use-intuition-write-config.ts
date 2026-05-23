@@ -1,5 +1,5 @@
 import { getMultiVaultAddressFromChainId } from '@0xintuition/sdk';
-import type { WriteConfig } from '@0xintuition/protocol';
+import type { WriteConfig } from '@0xintuition/sdk';
 import { useMemo } from 'react';
 import { usePublicClient, useWalletClient } from 'wagmi';
 

@@ -9,6 +9,14 @@ import { ClaimPreview } from './claim-preview';
 import { AtomSuggestions } from './atom-suggestions';
 import { isSelfSubject } from '../lib/conjugate';
 import {
+  canResolveSubjectAtoms,
+  isClaimStructurallyComplete,
+  resolveObjectDisplayLabel,
+  resolveSubjectDisplayLabel,
+  soleObjectTypeForPredicate,
+  subjectAtomSearchQuery,
+} from '../lib/claim-readiness';
+import {
   defaultPredicateAtomLabel,
   predicateSearchQuery,
 } from '../lib/intuition/predicate-resolution';
@@ -74,40 +82,87 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
     });
 
     useEffect(() => {
-      setSubjectAtom(null);
+      setSubjectAtom((current) => {
+        if (
+          current?.mode === 'create' &&
+          current.label === subjectAtomLabel(subject, subjectType)
+        ) {
+          return current;
+        }
+        return null;
+      });
       clearError();
       setOnchainSuccessMessage(null);
-    }, [subject, clearError]);
+    }, [subject, subjectType, clearError]);
 
     useEffect(() => {
-      setPredicateAtom(null);
+      setPredicateAtom((current) => {
+        if (
+          current?.mode === 'create' &&
+          predicateId &&
+          current.label === defaultPredicateAtomLabel(predicateId, subjectType)
+        ) {
+          return current;
+        }
+        return null;
+      });
       clearError();
       setOnchainSuccessMessage(null);
     }, [predicateId, subjectType, clearError]);
 
     useEffect(() => {
-      setObjectAtom(null);
+      setObjectAtom((current) => {
+        if (current?.mode === 'create' && current.label === object.trim()) {
+          return current;
+        }
+        return null;
+      });
       clearError();
       setOnchainSuccessMessage(null);
     }, [object, clearError]);
 
-    const hasSubject = subject.trim().length > 0 && subjectType !== null;
+    const hasSubject = canResolveSubjectAtoms(subject, subjectType);
     const hasPredicate = predicateId !== null;
 
+    const claimFormState = {
+      subject,
+      subjectType,
+      predicateId,
+      object,
+      objectType,
+      subjectAtom,
+    };
+
+    useEffect(() => {
+      const onlyType = soleObjectTypeForPredicate(predicateId);
+      if (onlyType && objectType !== onlyType) {
+        setObjectType(onlyType);
+      }
+    }, [predicateId, objectType]);
+
     const buildClaim = useCallback((): Omit<ClaimEntry, 'id' | 'timestamp'> | null => {
-      if (!subject.trim() || !subjectType || !predicateId || !object.trim() || !objectType) return null;
+      if (
+        !isClaimStructurallyComplete(claimFormState)
+      ) {
+        return null;
+      }
+
       const predicateLabel =
         predicateAtom?.label ??
-        defaultPredicateAtomLabel(predicateId, subjectType);
+        defaultPredicateAtomLabel(predicateId!, subjectType);
+      const storedSubject = isSelfSubject(subjectType)
+        ? subject.trim() || 'I'
+        : subject.trim();
+
       return {
-        subject,
-        subjectType,
-        predicateId,
+        subject: storedSubject,
+        subjectType: subjectType!,
+        predicateId: predicateId!,
         predicateLabel,
-        object,
-        objectType,
+        object: object.trim(),
+        objectType: objectType!,
       };
-    }, [subject, subjectType, predicateId, predicateAtom, object, objectType]);
+    }, [subject, subjectType, predicateId, predicateAtom, object, objectType, subjectAtom]);
 
     useImperativeHandle(
       ref,
@@ -206,7 +261,10 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       if (result) {
         onSave?.(claim);
         const shortHash = `${result.tripleTransactionHash.slice(0, 10)}…`;
-        setOnchainSuccessMessage(`Claim submitted on Intuition. Triple tx: ${shortHash}`);
+        const shortTripleId = `${result.tripleTermId.slice(0, 10)}…`;
+        setOnchainSuccessMessage(
+          `Claim submitted on Intuition. Triple ${shortTripleId} (tx ${shortHash})`
+        );
       }
     }, [
       buildClaim,
@@ -239,10 +297,8 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       predicateAtom?.label ??
       (predicateId ? defaultPredicateAtomLabel(predicateId, subjectType) : '');
 
-    const subjectLabel =
-      subjectAtom?.label ??
-      (subject.trim() ? subjectAtomLabel(subject, subjectType) : '');
-    const objectLabel = objectAtom?.label ?? object.trim();
+    const subjectLabel = resolveSubjectDisplayLabel(subject, subjectType, subjectAtom);
+    const objectLabel = resolveObjectDisplayLabel(object, objectAtom);
 
     const onchainHint = isWrongNetwork
       ? 'Switch to Intuition Mainnet to submit on-chain.'
@@ -250,10 +306,45 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
         ? 'Connect your wallet to submit on-chain.'
         : null;
 
+    const hasContent =
+      Boolean(subject.trim()) ||
+      subjectType !== null ||
+      predicateId !== null ||
+      Boolean(object.trim()) ||
+      objectType !== null ||
+      subjectAtom !== null ||
+      predicateAtom !== null ||
+      objectAtom !== null;
+
+    const handleClear = useCallback(() => {
+      setSubject('');
+      setSubjectType(null);
+      setPredicateId(null);
+      setObject('');
+      setObjectType(null);
+      setSubjectAtom(null);
+      setPredicateAtom(null);
+      setObjectAtom(null);
+      setOnchainSuccessMessage(null);
+      clearError();
+      onSubjectTypeChange?.(null);
+      onSubjectValueChange?.('');
+      onPredicateChange?.(null);
+    }, [clearError, onSubjectTypeChange, onSubjectValueChange, onPredicateChange]);
+
     return (
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6" data-tutorial-step="claim-builder">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 gap-3">
           <h2 className="text-lg font-semibold text-[var(--color-text)]">Claim Builder</h2>
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={!hasContent || isSubmitting}
+            className="focus-ring h-8 shrink-0 rounded-md px-3 text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)] disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Clear claim builder"
+          >
+            Clear
+          </button>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -267,7 +358,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
             />
             <AtomSuggestions
               fieldLabel="subject"
-              query={subject}
+              query={subjectAtomSearchQuery(subject, subjectType)}
               enabled={hasSubject}
               selection={subjectAtom}
               onSelectExisting={(suggestion) =>
@@ -347,18 +438,16 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
 
         <div className="mt-6">
           <ClaimPreview
+            {...claimFormState}
             subjectLabel={subjectLabel}
-            subjectType={subjectType}
+            predicateLabel={predicateLabel}
+            objectLabel={objectLabel}
             subjectTermId={
               subjectAtom?.mode === 'existing' ? subjectAtom.termId : undefined
             }
-            predicateId={predicateId}
-            predicateLabel={predicateLabel}
             predicateTermId={
               predicateAtom?.mode === 'existing' ? predicateAtom.termId : undefined
             }
-            objectLabel={objectLabel}
-            objectType={objectType}
             objectTermId={
               objectAtom?.mode === 'existing' ? objectAtom.termId : undefined
             }

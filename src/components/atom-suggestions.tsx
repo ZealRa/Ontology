@@ -48,6 +48,7 @@ export function AtomSuggestions({
 }: AtomSuggestionsProps) {
   const { suggestions, broadened, isSearching, error } = useAtomSuggestions(query, enabled);
   const trimmed = query.trim();
+  const listOpen = selection === null;
 
   const closeSuggestions = suggestions.filter(
     (s) => relevanceScore(s.label, trimmed) >= CLOSE_MATCH_SCORE
@@ -56,7 +57,7 @@ export function AtomSuggestions({
     (s) => relevanceScore(s.label, trimmed) < CLOSE_MATCH_SCORE
   );
 
-  if (!enabled || trimmed.length < 2) return null;
+  if (!enabled || trimmed.length < 1) return null;
 
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2 space-y-2">
@@ -70,7 +71,7 @@ export function AtomSuggestions({
             onClick={onClearSelection}
             className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] underline"
           >
-            Clear
+            Change
           </button>
         )}
       </div>
@@ -89,11 +90,11 @@ export function AtomSuggestions({
         </p>
       )}
 
-      {isSearching && (
+      {listOpen && isSearching && (
         <p className="text-xs text-[var(--color-text-muted)]">Searching close matches…</p>
       )}
 
-      {!isSearching && !error && suggestions.length > 0 && (
+      {listOpen && !isSearching && !error && suggestions.length > 0 && (
         <p className="text-[10px] text-[var(--color-text-muted)]">
           {broadened
             ? 'Few exact matches — showing closest, then broader results.'
@@ -101,13 +102,13 @@ export function AtomSuggestions({
         </p>
       )}
 
-      {error && (
+      {listOpen && error && (
         <p className="text-xs text-red-400" role="alert">
           {error}
         </p>
       )}
 
-      {!isSearching && !error && suggestions.length > 0 && (
+      {listOpen && !isSearching && !error && suggestions.length > 0 && (
         <div className="space-y-2">
           {closeSuggestions.length > 0 && (
             <div>
@@ -142,11 +143,10 @@ export function AtomSuggestions({
               </ul>
             </div>
           )}
-
         </div>
       )}
 
-      {!selection && (
+      {listOpen && (
         <button
           type="button"
           onClick={onChooseCreate}
