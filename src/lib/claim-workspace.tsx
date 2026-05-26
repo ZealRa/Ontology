@@ -68,6 +68,14 @@ export function ClaimWorkspaceProvider({ searchQuery, children }: ClaimWorkspace
     []
   );
 
+  const fillOntologyPattern = useCallback(
+    (subjectTypeId: string, predicateId: string, objectTypeId: string) => {
+      claimBuilderRef.current?.fillOntologyPattern(subjectTypeId, predicateId, objectTypeId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    []
+  );
+
   const clearHistory = useCallback(() => setHistory([]), [setHistory]);
 
   const value = useMemo<ClaimWorkspace>(
@@ -86,6 +94,7 @@ export function ClaimWorkspaceProvider({ searchQuery, children }: ClaimWorkspace
       addToBatch,
       restoreClaim,
       fillFromMatrix,
+      fillOntologyPattern,
     }),
     [
       history,
@@ -98,6 +107,7 @@ export function ClaimWorkspaceProvider({ searchQuery, children }: ClaimWorkspace
       addToBatch,
       restoreClaim,
       fillFromMatrix,
+      fillOntologyPattern,
     ]
   );
 

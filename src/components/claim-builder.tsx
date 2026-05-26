@@ -21,11 +21,13 @@ import {
   defaultPredicateAtomLabel,
   predicateSearchQuery,
 } from '../lib/intuition/predicate-resolution';
+import { getAtomTypeLabel } from '../data/ontology-claim-patterns';
 import type { ExampleClaim } from '../data/example-claims';
 import type { ClaimEntry } from '../types';
 
 export interface ClaimBuilderHandle {
   fillFromMatrix: (subjectTypeId: string, predicateId: string, objectTypeId: string) => void;
+  fillOntologyPattern: (subjectTypeId: string, predicateId: string, objectTypeId: string) => void;
   restoreClaim: (entry: ClaimEntry) => void;
   getSubjectValue: () => string;
   getSubjectType: () => string | null;
@@ -176,6 +178,20 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
           onPredicateChange?.(predId);
           setObjectType(objTypeId);
           setObject('');
+          setSubjectAtom(null);
+          setPredicateAtom(null);
+          setObjectAtom(null);
+        },
+        fillOntologyPattern(subTypeId: string, predId: string, objTypeId: string) {
+          const subjectLabel = getAtomTypeLabel(subTypeId);
+          const objectLabel = getAtomTypeLabel(objTypeId);
+          setSubject(subjectLabel);
+          setSubjectType(subTypeId);
+          onSubjectTypeChange?.(subTypeId);
+          setPredicateId(predId);
+          onPredicateChange?.(predId);
+          setObject(objectLabel);
+          setObjectType(objTypeId);
           setSubjectAtom(null);
           setPredicateAtom(null);
           setObjectAtom(null);
