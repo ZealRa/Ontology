@@ -1,9 +1,9 @@
 import type { PrivyClientConfig } from '@privy-io/react-auth';
 
-import { intuitionMainnet } from './intuition-chain';
+import { intuitionMainnet, intuitionTestnet } from './intuition-chain';
 
 export const privyConfig: PrivyClientConfig = {
-  supportedChains: [intuitionMainnet],
+  supportedChains: [intuitionMainnet, intuitionTestnet],
   defaultChain: intuitionMainnet,
   embeddedWallets: {
     ethereum: {

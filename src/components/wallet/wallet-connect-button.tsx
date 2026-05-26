@@ -10,13 +10,15 @@ export function WalletConnectButton() {
     address,
     isConnected,
     isWrongNetwork,
-    switchToIntuitionMainnet,
+    switchToIntuitionChain,
+    networkLabel,
+    targetChainId,
     isSwitching,
   } = useIntuitionChain();
 
   const handleSwitchNetwork = async () => {
     try {
-      await switchToIntuitionMainnet();
+      await switchToIntuitionChain(targetChainId);
     } catch (error) {
       console.error('Network switch failed:', error);
     }
@@ -35,6 +37,7 @@ export function WalletConnectButton() {
       address={address}
       isWrongNetwork={isWrongNetwork}
       isSwitching={isSwitching}
+      switchNetworkLabel={networkLabel}
       onSwitchNetwork={() => void handleSwitchNetwork()}
       onDisconnect={() => void disconnect()}
     />

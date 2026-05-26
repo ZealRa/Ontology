@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useImperativeHandle, useRef, forwardR
 
 import type { ProtocolAtomResolution } from '../lib/intuition/types';
 import { useSubmitClaim } from '../lib/intuition/use-submit-claim';
+import { useIntuitionNetwork } from '../lib/wallet/intuition-network-context';
 import { SubjectInput } from './subject-input';
 import { PredicateSelect } from './predicate-select';
 import { ObjectInput } from './object-input';
@@ -73,6 +74,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       clearError,
       isWrongNetwork,
     } = useSubmitClaim();
+    const { networkLabel } = useIntuitionNetwork();
 
     const subjectRef = useRef(subject);
     const subjectTypeRef = useRef(subjectType);
@@ -301,7 +303,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
     const objectLabel = resolveObjectDisplayLabel(object, objectAtom);
 
     const onchainHint = isWrongNetwork
-      ? 'Switch to Intuition Mainnet to submit on-chain.'
+      ? `Switch to ${networkLabel} to submit on-chain.`
       : !canSubmit && !isSubmitting
         ? 'Connect your wallet to submit on-chain.'
         : null;

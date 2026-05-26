@@ -3,6 +3,7 @@ import { WagmiProvider } from '@privy-io/wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
+import { IntuitionNetworkProvider } from './intuition-network-context';
 import { IntuitionNetworkSync } from './intuition-network-sync';
 import { privyConfig } from './privy-config';
 import { wagmiConfig } from './wagmi-config';
@@ -33,12 +34,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   return (
     <PrivyProvider appId={appId} config={privyConfig}>
-      <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>
-          <IntuitionNetworkSync />
-          {children}
-        </WagmiProvider>
-      </QueryClientProvider>
+      <IntuitionNetworkProvider>
+        <QueryClientProvider client={queryClient}>
+          <WagmiProvider config={wagmiConfig}>
+            <IntuitionNetworkSync />
+            {children}
+          </WagmiProvider>
+        </QueryClientProvider>
+      </IntuitionNetworkProvider>
     </PrivyProvider>
   );
 }

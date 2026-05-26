@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-d
 
 import { GlobalSearchInput } from './components/global-search-input';
 import { ProtocolSearchResults } from './components/protocol-search-results';
+import { NetworkSwitcher } from './components/wallet/network-switcher';
 import { WalletConnectButton } from './components/wallet/wallet-connect-button';
 import { TutorialOverlay, useTutorial } from './components/tutorial-overlay';
 import { useLocalStorage } from './lib/use-local-storage';
@@ -125,6 +126,7 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              <NetworkSwitcher />
               <WalletConnectButton />
               <button
                 onClick={openTutorial}

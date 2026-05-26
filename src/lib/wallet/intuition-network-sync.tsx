@@ -1,23 +1,25 @@
 import { useEffect, useRef } from 'react';
 
+import { useIntuitionNetwork } from './intuition-network-context';
 import { useIntuitionChain } from './use-intuition-chain';
 
 /**
- * Attempts once per session to move the wallet to Intuition Mainnet after connect.
- * If the user declines or it fails, the manual switch button remains available.
+ * Attempts once per session to move the wallet to the selected Intuition network
+ * after connect. If the user declines or it fails, the manual switch remains available.
  */
 export function IntuitionNetworkSync() {
-  const { isWrongNetwork, switchToIntuitionMainnet } = useIntuitionChain();
-  const attemptedRef = useRef(false);
+  const { chainId: targetChainId } = useIntuitionNetwork();
+  const { isWrongNetwork, switchToIntuitionChain } = useIntuitionChain();
+  const attemptedForChainRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isWrongNetwork || attemptedRef.current) return;
+    if (!isWrongNetwork || attemptedForChainRef.current === targetChainId) return;
 
-    attemptedRef.current = true;
-    void switchToIntuitionMainnet().catch((error) => {
-      console.warn('Auto switch to Intuition Mainnet failed:', error);
+    attemptedForChainRef.current = targetChainId;
+    void switchToIntuitionChain(targetChainId).catch((error) => {
+      console.warn('Auto switch to Intuition network failed:', error);
     });
-  }, [isWrongNetwork, switchToIntuitionMainnet]);
+  }, [isWrongNetwork, switchToIntuitionChain, targetChainId]);
 
   return null;
 }

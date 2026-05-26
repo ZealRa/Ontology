@@ -7,6 +7,7 @@ export type WalletAddressMenuProps = {
   address: `0x${string}`;
   isWrongNetwork: boolean;
   isSwitching: boolean;
+  switchNetworkLabel: string;
   onSwitchNetwork: () => void;
   onDisconnect: () => void;
 };
@@ -15,6 +16,7 @@ export function WalletAddressMenu({
   address,
   isWrongNetwork,
   isSwitching,
+  switchNetworkLabel,
   onSwitchNetwork,
   onDisconnect,
 }: WalletAddressMenuProps) {
@@ -49,6 +51,7 @@ export function WalletAddressMenu({
           ensName={ensName}
           isWrongNetwork={isWrongNetwork}
           isSwitching={isSwitching}
+          switchNetworkLabel={switchNetworkLabel}
           onSwitchNetwork={handleSwitchNetwork}
           onDisconnect={handleDisconnect}
         />

@@ -3,19 +3,20 @@ import type { WriteConfig } from '@0xintuition/sdk';
 import { useMemo } from 'react';
 import { usePublicClient, useWalletClient } from 'wagmi';
 
-import { INTUITION_CHAIN_ID } from '../wallet/intuition-chain';
+import { useIntuitionNetwork } from '../wallet/intuition-network-context';
 
 export function useIntuitionWriteConfig(): WriteConfig | null {
-  const publicClient = usePublicClient({ chainId: INTUITION_CHAIN_ID });
+  const { chainId } = useIntuitionNetwork();
+  const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient();
 
   return useMemo(() => {
     if (!publicClient || !walletClient) return null;
 
     return {
-      address: getMultiVaultAddressFromChainId(INTUITION_CHAIN_ID),
+      address: getMultiVaultAddressFromChainId(chainId),
       publicClient,
       walletClient,
-    };
-  }, [publicClient, walletClient]);
+    } satisfies WriteConfig;
+  }, [publicClient, walletClient, chainId]);
 }

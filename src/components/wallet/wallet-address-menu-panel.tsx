@@ -8,6 +8,7 @@ type WalletAddressMenuPanelProps = {
   ensName: string | null;
   isWrongNetwork: boolean;
   isSwitching: boolean;
+  switchNetworkLabel: string;
   onSwitchNetwork: () => void;
   onDisconnect: () => void;
 };
@@ -18,6 +19,7 @@ export function WalletAddressMenuPanel({
   ensName,
   isWrongNetwork,
   isSwitching,
+  switchNetworkLabel,
   onSwitchNetwork,
   onDisconnect,
 }: WalletAddressMenuPanelProps) {
@@ -30,7 +32,11 @@ export function WalletAddressMenuPanel({
       <WalletIdentityBlock address={address} ensName={ensName} />
 
       {isWrongNetwork && (
-        <WalletMenuSwitchNetwork isSwitching={isSwitching} onSwitch={onSwitchNetwork} />
+        <WalletMenuSwitchNetwork
+          networkLabel={switchNetworkLabel}
+          isSwitching={isSwitching}
+          onSwitch={onSwitchNetwork}
+        />
       )}
 
       <WalletMenuDisconnect onDisconnect={onDisconnect} />
