@@ -16,7 +16,7 @@ export const SUBJECT_CLASSIFY_DEBOUNCE_MS = 200;
 /** Debounce before querying Intuition GraphQL for atom suggestions. */
 export const ATOM_SEARCH_DEBOUNCE_MS = 350;
 
-/** Debounce for glossary / global on-chain search (atoms + triples). */
+/** Debounce for protocol / global on-chain search (atoms + triples). */
 export const PROTOCOL_SEARCH_DEBOUNCE_MS = 350;
 
 /**

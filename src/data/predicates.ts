@@ -20,7 +20,7 @@ export type PredicateSemanticGroup = (typeof PREDICATE_GROUPS)[number];
 
 /**
  * Grammatical form of the predicate label. Documentary for now — lets the
- * glossary surface form variants and leaves the door open for form-aware
+ * protocol surface form variants and leaves the door open for form-aware
  * ranking in the predicate picker once multiple forms per concept exist in
  * the main PREDICATES list.
  *

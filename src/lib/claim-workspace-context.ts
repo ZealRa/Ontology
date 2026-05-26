@@ -38,6 +38,8 @@ export interface ClaimWorkspace {
   restoreClaim: (entry: ClaimEntry) => void;
   /** Fill the builder from a (subject, predicate, object) triple selection. */
   fillFromMatrix: (subjectTypeId: string, predicateId: string, objectTypeId: string) => void;
+  /** Prefill builder with type labels (ontology pattern, not named instances). */
+  fillOntologyPattern: (subjectTypeId: string, predicateId: string, objectTypeId: string) => void;
 }
 
 export const ClaimWorkspaceContext = createContext<ClaimWorkspace | null>(null);

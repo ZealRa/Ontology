@@ -1,4 +1,5 @@
 import { ClaimBuilder } from '../components/claim-builder';
+import { OntologyClaimCallout } from '../components/ontology-claim-callout';
 import { SchemaPanel } from '../components/schema-panel';
 import { AtomTree } from '../components/atom-tree';
 import { RelationshipGraph } from '../components/relationship-graph';
@@ -23,6 +24,7 @@ export function HomePage() {
   return (
     <main className="px-4 sm:px-6 py-8 space-y-8">
       <div className="space-y-3" data-tutorial-step="claim-builder">
+        <OntologyClaimCallout />
         <ClaimBuilder
           ref={claimBuilderRef}
           onSubjectTypeChange={setSelectedTypeId}
