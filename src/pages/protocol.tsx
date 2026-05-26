@@ -13,7 +13,7 @@ const EXAMPLE_QUERIES = ['trust', 'follow', 'ethereum', 'Person'];
  * Browse live on-chain atoms and triples via the Intuition SDK global search.
  * @see https://www.docs.intuition.systems/docs/intuition-sdk/search-guide
  */
-export function GlossaryPage() {
+export function ProtocolPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
   const [resultFilter, setResultFilter] = useState<ResultFilter>('all');
