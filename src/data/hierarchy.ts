@@ -22,6 +22,11 @@ export const ATOM_HIERARCHY: HierarchyNode = {
       category: 'identity',
     },
     {
+      id: 'Account',
+      label: 'Account',
+      category: 'identity',
+    },
+    {
       id: 'Organization',
       label: 'Organization',
       category: 'identity',

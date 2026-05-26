@@ -9,7 +9,7 @@ import { TypeBadge } from './type-badge';
 
 /** Quick picks shown in the compact type selector */
 const QUICK_PICK_IDS = [
-  'Self', 'Person', 'Organization', 'SoftwareSourceCode', 'DefinedTerm',
+  'Self', 'Person', 'Account', 'Organization', 'SoftwareSourceCode', 'DefinedTerm',
   'Place', 'Product', 'Event', 'Thing',
 ];
 

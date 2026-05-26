@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getObjectTypesForPredicate, PREDICATES } from '../data/predicates';
 import { ATOM_TYPES, type AtomType } from '../data/atom-types';
 import { TypeBadge } from './type-badge';
@@ -30,20 +30,24 @@ export function ObjectInput({
 
   const selectedAtomType = ATOM_TYPES.find((t) => t.id === selectedType);
   const predicate = predicateId ? PREDICATES.find((p) => p.id === predicateId) : undefined;
-
-  // Auto-select type if only one option
   const onlyExpected = expectedTypes.length === 1 ? expectedTypes[0] : null;
   const onlyExpectedAtom = onlyExpected
     ? ATOM_TYPES.find((t) => t.id === onlyExpected)
     : undefined;
-  if (onlyExpected && selectedType !== onlyExpected && !disabled) {
-    onTypeChange(onlyExpected);
-  }
+
+  useEffect(() => {
+    if (onlyExpected && selectedType !== onlyExpected && !disabled) {
+      onTypeChange(onlyExpected);
+    }
+  }, [onlyExpected, selectedType, disabled, onTypeChange]);
 
   const handleTypeSelect = (typeId: string) => {
     onTypeChange(typeId);
     setShowTypePicker(false);
   };
+
+  const needsTypeChoice =
+    !disabled && Boolean(value.trim()) && !selectedType && expectedAtomTypes.length > 1;
 
   return (
     <div className="flex flex-col gap-2">
@@ -63,7 +67,7 @@ export function ObjectInput({
           }
           className={`focus-ring w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-[var(--color-text)] placeholder-[var(--color-text-muted)] transition-colors focus:border-[var(--color-accent)] ${
             disabled ? 'cursor-not-allowed' : ''
-          } ${selectedAtomType && !disabled ? 'pr-24' : ''}`}
+          } ${selectedAtomType && !disabled ? 'pr-24' : ''} ${needsTypeChoice ? 'border-amber-500/60' : ''}`}
         />
         {selectedAtomType && !disabled && (
           <button
@@ -77,6 +81,12 @@ export function ObjectInput({
         )}
       </div>
 
+      {needsTypeChoice && (
+        <p className="text-xs text-amber-400" role="status">
+          Pick an object type below to submit this claim on-chain.
+        </p>
+      )}
+
       {!disabled && onlyExpectedAtom && predicate && (
         <LockNote>
           Only <code className="text-[var(--color-text-secondary)]">{onlyExpectedAtom.label}</code>{' '}
@@ -85,12 +95,13 @@ export function ObjectInput({
         </LockNote>
       )}
 
-      {!disabled && (showTypePicker || (!selectedType && expectedAtomTypes.length > 1)) && expectedAtomTypes.length > 1 && (
+      {!disabled && (showTypePicker || needsTypeChoice) && expectedAtomTypes.length > 1 && (
         <div className="flex flex-wrap gap-1.5">
           <span className="text-xs text-[var(--color-text-muted)] self-center mr-1">Type:</span>
           {expectedAtomTypes.map((atomType) => (
             <button
               key={atomType.id}
+              type="button"
               onClick={() => handleTypeSelect(atomType.id)}
               className={`focus-ring rounded-md px-2 py-1 text-xs transition-colors ${
                 selectedType === atomType.id

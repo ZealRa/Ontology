@@ -21,22 +21,22 @@ const FIRST_PERSON_LABELS: Record<string, string> = {
   uses: 'use',
   sponsors: 'sponsor',
 
-  // "am/are" auxiliaries for -Of / adjectival predicates
-  memberOf: 'am member of',
-  founderOf: 'am founder of',
-  interestedIn: 'am interested in',
-  expertIn: 'am expert in',
-  locatedIn: 'am located in',
-  partOf: 'am part of',
-  isA: 'am a',
+  // "am/are" auxiliaries for phrase predicates
+  'member of': 'am member of',
+  'founder of': 'am founder of',
+  'interested in': 'am interested in',
+  'expert in': 'am expert in',
+  'located in': 'am located in',
+  'part of': 'am part of',
+  'is a': 'am a',
 
   // -s present-tense verbs
-  worksAt: 'work at',
-  contributorTo: 'contribute to',
+  'works at': 'work at',
+  'contributor to': 'contribute to',
   created: 'created',
   reviewed: 'reviewed',
-  attendedEvent: 'attended',
-  organizedEvent: 'organized',
+  'attended event': 'attended',
+  'organized event': 'organized',
   about: 'am about',
 };
 

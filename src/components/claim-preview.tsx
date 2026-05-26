@@ -1,43 +1,80 @@
 import { PREDICATES } from '../data/predicates';
 import { ATOM_TYPES, ATOM_CATEGORIES } from '../data/atom-types';
-import { conjugateForSelf, isSelfSubject } from '../lib/conjugate';
+import { isSelfSubject } from '../lib/conjugate';
+import {
+  canShowClaimActions,
+  getClaimBlockers,
+  isClaimStructurallyComplete,
+  type ClaimFormState,
+} from '../lib/claim-readiness';
 
-interface ClaimPreviewProps {
-  subject: string;
-  subjectType: string | null;
-  predicateId: string | null;
-  object: string;
-  objectType: string | null;
+interface ClaimPreviewProps extends ClaimFormState {
+  subjectLabel: string;
+  predicateLabel: string;
+  objectLabel: string;
+  subjectTermId?: `0x${string}`;
+  predicateTermId?: `0x${string}`;
+  objectTermId?: `0x${string}`;
   onSave?: () => void;
   onAddToBatch?: () => void;
+  onSubmitOnchain?: () => void | Promise<void>;
+  canSubmitOnchain?: boolean;
+  isSubmittingOnchain?: boolean;
+  onchainProgressLabel?: string | null;
+  onchainError?: string | null;
+  onchainSuccessMessage?: string | null;
 }
 
 export function ClaimPreview({
   subject,
   subjectType,
+  subjectAtom,
   predicateId,
+  predicateLabel,
   object,
   objectType,
+  subjectLabel,
+  objectLabel,
+  subjectTermId,
+  predicateTermId,
+  objectTermId,
   onSave,
   onAddToBatch,
+  onSubmitOnchain,
+  canSubmitOnchain = false,
+  isSubmittingOnchain = false,
+  onchainProgressLabel,
+  onchainError,
+  onchainSuccessMessage,
 }: ClaimPreviewProps) {
-  const hasSubject = subject.trim().length > 0;
-  const hasPredicate = predicateId !== null;
-  const hasObject = object.trim().length > 0;
+  const formState: ClaimFormState = {
+    subject,
+    subjectType,
+    predicateId,
+    object,
+    objectType,
+    subjectAtom,
+  };
 
-  if (!hasSubject) return null;
+  const showPreview = subjectType !== null || subjectLabel.trim().length > 0;
+  if (!showPreview) return null;
+
+  const hasSubject = subjectLabel.trim().length > 0;
+  const hasPredicate = predicateId !== null;
+  const hasObject = objectLabel.trim().length > 0;
 
   const predicate = PREDICATES.find((p) => p.id === predicateId);
-  const subjectAtom = ATOM_TYPES.find((t) => t.id === subjectType);
-  const objectAtom = ATOM_TYPES.find((t) => t.id === objectType);
+  const subjectAtomType = ATOM_TYPES.find((t) => t.id === subjectType);
+  const objectAtomType = ATOM_TYPES.find((t) => t.id === objectType);
 
-  const isComplete = hasSubject && hasPredicate && hasObject && subjectType && objectType;
+  const showActions = canShowClaimActions(formState);
+  const structurallyComplete = isClaimStructurallyComplete(formState);
+  const blockers = getClaimBlockers(formState);
   const isSelf = isSelfSubject(subjectType);
 
-  // Check validity
   let isValid = false;
   let validationMessage = '';
-  if (isComplete && predicate) {
+  if (structurallyComplete && predicate && subjectType && objectType) {
     const subjectOk = predicate.subjectTypes.includes(subjectType);
     const objectOk = predicate.objectTypes.includes(objectType);
     isValid = subjectOk && objectOk;
@@ -49,33 +86,32 @@ export function ClaimPreview({
     }
   }
 
-  const subjectColor = subjectAtom
-    ? ATOM_CATEGORIES[subjectAtom.category].color
+  const canSubmit =
+    structurallyComplete && isValid && canSubmitOnchain && !isSubmittingOnchain;
+
+  const subjectColor = subjectAtomType
+    ? ATOM_CATEGORIES[subjectAtomType.category].color
     : 'var(--color-text)';
-  const objectColor = objectAtom
-    ? ATOM_CATEGORIES[objectAtom.category].color
+  const objectColor = objectAtomType
+    ? ATOM_CATEGORIES[objectAtomType.category].color
     : 'var(--color-text)';
 
-  // Displayed predicate label — first-person conjugation when subject is Self,
-  // raw predicate label otherwise. Stored claim still carries the canonical ID.
-  const displayedPredicate = hasPredicate && predicate
-    ? isSelf
-      ? conjugateForSelf(predicate.id, predicate.label)
-      : predicate.label
+  const displayedPredicate = hasPredicate && predicateLabel.trim()
+    ? predicateLabel
     : '___';
-
-  // When the subject type is `Self`, the typed text is semantically moot —
-  // the atom resolves to whoever stakes, regardless of what label the user
-  // typed. Always display `I` so the preview matches the claim's real meaning.
-  const displayedSubject = isSelf ? 'I' : subject;
+  const displayedSubject = isSelf ? 'I' : subjectLabel;
 
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-4">
       <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mb-2">
         <span>Claim Preview</span>
-        {isComplete && (
-          <span className={`text-xs font-medium ${isValid ? 'text-emerald-400' : 'text-red-400'}`}>
-            {isValid ? 'Valid' : 'Invalid'}
+        {showActions && (
+          <span
+            className={`text-xs font-medium ${
+              structurallyComplete && isValid ? 'text-emerald-400' : 'text-amber-400'
+            }`}
+          >
+            {structurallyComplete && isValid ? 'Ready' : 'Almost ready'}
           </span>
         )}
         {isSelf && (
@@ -97,40 +133,97 @@ export function ClaimPreview({
         <span className="text-[var(--color-text-muted)]">—</span>
         <span className="text-[var(--color-accent)]">{displayedPredicate}</span>
         <span className="text-[var(--color-text-muted)]">—</span>
-        <span style={{ color: objectColor }}>{hasObject ? object : '___'}</span>
+        <span style={{ color: objectColor }}>{hasObject ? objectLabel : '___'}</span>
       </div>
+
+      {(subjectTermId || predicateTermId || objectTermId) && (
+        <p className="mt-2 text-[10px] font-mono text-[var(--color-text-muted)] space-y-0.5">
+          {subjectTermId && (
+            <span className="block truncate">Subject atom: {subjectTermId}</span>
+          )}
+          {predicateTermId && (
+            <span className="block truncate">Predicate atom: {predicateTermId}</span>
+          )}
+          {objectTermId && (
+            <span className="block truncate">Object atom: {objectTermId}</span>
+          )}
+        </p>
+      )}
+
+      {showActions && blockers.length > 0 && (
+        <ul className="mt-2 text-xs text-amber-400/90 list-disc list-inside space-y-0.5">
+          {blockers.map((blocker) => (
+            <li key={blocker}>{blocker}</li>
+          ))}
+        </ul>
+      )}
 
       {validationMessage && (
         <p className="mt-2 text-xs text-red-400">{validationMessage}</p>
       )}
 
-      {isComplete && isValid && (
+      {showActions && (
         <>
-          <p className="mt-2 text-xs text-emerald-400/70">
-            {displayedSubject} ({subjectType}) {displayedPredicate} {object} ({objectType})
-          </p>
+          {structurallyComplete && isValid && (
+            <p className="mt-2 text-xs text-emerald-400/70">
+              {displayedSubject} ({subjectType}) {displayedPredicate} {objectLabel} ({objectType})
+            </p>
+          )}
 
-          {isSelf && predicate && hasObject && (
+          {isSelf && predicate && hasObject && structurallyComplete && isValid && (
             <SharedClaimStakersPreview
-              predicateLabel={predicate.label}
-              object={object}
+              predicateLabel={displayedPredicate}
+              object={objectLabel}
               objectColor={objectColor}
             />
           )}
 
-          <div className="mt-3 flex items-center gap-2">
+          {onchainError && (
+            <p className="mt-2 text-xs text-red-400">{onchainError}</p>
+          )}
+          {onchainSuccessMessage && (
+            <p className="mt-2 text-xs text-emerald-400/80">{onchainSuccessMessage}</p>
+          )}
+          {onchainProgressLabel && isSubmittingOnchain && (
+            <p className="mt-2 text-xs text-[var(--color-text-muted)]">{onchainProgressLabel}</p>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {onSubmitOnchain && (
+              <button
+                type="button"
+                onClick={() => void onSubmitOnchain()}
+                disabled={!canSubmit}
+                title={
+                  !structurallyComplete
+                    ? blockers[0]
+                    : !isValid
+                      ? validationMessage || 'Fix claim validity before submitting on-chain'
+                      : !canSubmitOnchain
+                        ? 'Connect your wallet on Intuition Mainnet'
+                        : undefined
+                }
+                className="focus-ring rounded-md px-3 py-1.5 text-xs font-medium bg-emerald-500 text-black hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmittingOnchain ? 'Submitting…' : 'Submit on-chain'}
+              </button>
+            )}
             {onSave && (
               <button
+                type="button"
                 onClick={onSave}
-                className="focus-ring rounded-md px-3 py-1.5 text-xs font-medium bg-[var(--color-accent)] text-black hover:bg-[var(--color-accent-hover)] transition-colors"
+                disabled={!structurallyComplete || !isValid || isSubmittingOnchain}
+                className="focus-ring rounded-md px-3 py-1.5 text-xs font-medium bg-[var(--color-accent)] text-black hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Save to History
               </button>
             )}
             {onAddToBatch && (
               <button
+                type="button"
                 onClick={onAddToBatch}
-                className="focus-ring rounded-md px-3 py-1.5 text-xs font-medium bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+                disabled={!structurallyComplete || !isValid || isSubmittingOnchain}
+                className="focus-ring rounded-md px-3 py-1.5 text-xs font-medium bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add to Batch
               </button>
@@ -142,10 +235,6 @@ export function ClaimPreview({
   );
 }
 
-/**
- * Shows how a `Self`-subject claim renders from different stakers' points of
- * view so the aggregation benefit is tangible — one claim, N signals.
- */
 function SharedClaimStakersPreview({
   predicateLabel,
   object,
@@ -182,4 +271,3 @@ function SharedClaimStakersPreview({
     </div>
   );
 }
-

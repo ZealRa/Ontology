@@ -13,6 +13,12 @@ export const GLOBAL_SEARCH_DEBOUNCE_MS = 200;
 /** Debounce for the subject-input classifier — matches search debounce. */
 export const SUBJECT_CLASSIFY_DEBOUNCE_MS = 200;
 
+/** Debounce before querying Intuition GraphQL for atom suggestions. */
+export const ATOM_SEARCH_DEBOUNCE_MS = 350;
+
+/** Debounce for glossary / global on-chain search (atoms + triples). */
+export const PROTOCOL_SEARCH_DEBOUNCE_MS = 350;
+
 /**
  * Delay before opening the tutorial after app load, giving the initial
  * paint + route hydration time to settle so the highlight targets the

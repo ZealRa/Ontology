@@ -1,9 +1,25 @@
 import { useState, useCallback, useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
+
+import type { ProtocolAtomResolution } from '../lib/intuition/types';
+import { useSubmitClaim } from '../lib/intuition/use-submit-claim';
 import { SubjectInput } from './subject-input';
 import { PredicateSelect } from './predicate-select';
 import { ObjectInput } from './object-input';
 import { ClaimPreview } from './claim-preview';
-import { PREDICATES } from '../data/predicates';
+import { AtomSuggestions } from './atom-suggestions';
+import { isSelfSubject } from '../lib/conjugate';
+import {
+  canResolveSubjectAtoms,
+  isClaimStructurallyComplete,
+  resolveObjectDisplayLabel,
+  resolveSubjectDisplayLabel,
+  soleObjectTypeForPredicate,
+  subjectAtomSearchQuery,
+} from '../lib/claim-readiness';
+import {
+  defaultPredicateAtomLabel,
+  predicateSearchQuery,
+} from '../lib/intuition/predicate-resolution';
 import type { ExampleClaim } from '../data/example-claims';
 import type { ClaimEntry } from '../types';
 
@@ -22,19 +38,42 @@ interface ClaimBuilderProps {
   onAddToBatch?: (claim: Omit<ClaimEntry, 'id' | 'timestamp'>) => void;
 }
 
+function subjectAtomLabel(subject: string, subjectType: string | null): string {
+  if (isSelfSubject(subjectType)) return 'I';
+  return subject.trim();
+}
+
 export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
-  function ClaimBuilder({ onSubjectTypeChange, onSubjectValueChange, onPredicateChange, onSave, onAddToBatch }, ref) {
+  function ClaimBuilder(
+    {
+      onSubjectTypeChange,
+      onSubjectValueChange,
+      onPredicateChange,
+      onSave,
+      onAddToBatch,
+    },
+    ref
+  ) {
     const [subject, setSubject] = useState('');
     const [subjectType, setSubjectType] = useState<string | null>(null);
     const [predicateId, setPredicateId] = useState<string | null>(null);
     const [object, setObject] = useState('');
     const [objectType, setObjectType] = useState<string | null>(null);
+    const [subjectAtom, setSubjectAtom] = useState<ProtocolAtomResolution | null>(null);
+    const [predicateAtom, setPredicateAtom] = useState<ProtocolAtomResolution | null>(null);
+    const [objectAtom, setObjectAtom] = useState<ProtocolAtomResolution | null>(null);
+    const [onchainSuccessMessage, setOnchainSuccessMessage] = useState<string | null>(null);
 
-    // Mirror the latest values behind refs so the imperative handle's getters
-    // always read current state without rebuilding the handle object on every
-    // keystroke (which would invalidate callers' cached `ref.current`). Mirror
-    // inside an effect — the react-hooks lint rule forbids ref writes during
-    // render, and post-commit sync is semantically identical here.
+    const {
+      submit,
+      canSubmit,
+      isSubmitting,
+      progressLabel,
+      error: onchainError,
+      clearError,
+      isWrongNetwork,
+    } = useSubmitClaim();
+
     const subjectRef = useRef(subject);
     const subjectTypeRef = useRef(subjectType);
     useEffect(() => {
@@ -42,24 +81,89 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       subjectTypeRef.current = subjectType;
     });
 
-    const hasSubject = subject.trim().length > 0 && subjectType !== null;
+    useEffect(() => {
+      setSubjectAtom((current) => {
+        if (
+          current?.mode === 'create' &&
+          current.label === subjectAtomLabel(subject, subjectType)
+        ) {
+          return current;
+        }
+        return null;
+      });
+      clearError();
+      setOnchainSuccessMessage(null);
+    }, [subject, subjectType, clearError]);
+
+    useEffect(() => {
+      setPredicateAtom((current) => {
+        if (
+          current?.mode === 'create' &&
+          predicateId &&
+          current.label === defaultPredicateAtomLabel(predicateId, subjectType)
+        ) {
+          return current;
+        }
+        return null;
+      });
+      clearError();
+      setOnchainSuccessMessage(null);
+    }, [predicateId, subjectType, clearError]);
+
+    useEffect(() => {
+      setObjectAtom((current) => {
+        if (current?.mode === 'create' && current.label === object.trim()) {
+          return current;
+        }
+        return null;
+      });
+      clearError();
+      setOnchainSuccessMessage(null);
+    }, [object, clearError]);
+
+    const hasSubject = canResolveSubjectAtoms(subject, subjectType);
     const hasPredicate = predicateId !== null;
 
-    const buildClaim = useCallback((): Omit<ClaimEntry, 'id' | 'timestamp'> | null => {
-      if (!subject.trim() || !subjectType || !predicateId || !object.trim() || !objectType) return null;
-      const pred = PREDICATES.find((p) => p.id === predicateId);
-      return {
-        subject,
-        subjectType,
-        predicateId,
-        predicateLabel: pred?.label ?? predicateId,
-        object,
-        objectType,
-      };
-    }, [subject, subjectType, predicateId, object, objectType]);
+    const claimFormState = {
+      subject,
+      subjectType,
+      predicateId,
+      object,
+      objectType,
+      subjectAtom,
+    };
 
-    // Stable imperative handle — getters read via refs so `[]` deps are honest
-    // and callers' cached ref.current values never go stale between renders.
+    useEffect(() => {
+      const onlyType = soleObjectTypeForPredicate(predicateId);
+      if (onlyType && objectType !== onlyType) {
+        setObjectType(onlyType);
+      }
+    }, [predicateId, objectType]);
+
+    const buildClaim = useCallback((): Omit<ClaimEntry, 'id' | 'timestamp'> | null => {
+      if (
+        !isClaimStructurallyComplete(claimFormState)
+      ) {
+        return null;
+      }
+
+      const predicateLabel =
+        predicateAtom?.label ??
+        defaultPredicateAtomLabel(predicateId!, subjectType);
+      const storedSubject = isSelfSubject(subjectType)
+        ? subject.trim() || 'I'
+        : subject.trim();
+
+      return {
+        subject: storedSubject,
+        subjectType: subjectType!,
+        predicateId: predicateId!,
+        predicateLabel,
+        object: object.trim(),
+        objectType: objectType!,
+      };
+    }, [subject, subjectType, predicateId, predicateAtom, object, objectType, subjectAtom]);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -70,6 +174,9 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
           onPredicateChange?.(predId);
           setObjectType(objTypeId);
           setObject('');
+          setSubjectAtom(null);
+          setPredicateAtom(null);
+          setObjectAtom(null);
         },
         restoreClaim(entry: ClaimEntry) {
           setSubject(entry.subject);
@@ -79,6 +186,9 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
           onPredicateChange?.(entry.predicateId);
           setObject(entry.object);
           setObjectType(entry.objectType);
+          setSubjectAtom(null);
+          setPredicateAtom(null);
+          setObjectAtom(null);
         },
         getSubjectValue: () => subjectRef.current,
         getSubjectType: () => subjectTypeRef.current,
@@ -108,6 +218,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
 
     const handlePredicateChange = useCallback((id: string | null) => {
       setPredicateId(id);
+      setPredicateAtom(null);
       setObject('');
       setObjectType(null);
       onPredicateChange?.(id);
@@ -123,6 +234,52 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       if (claim) onAddToBatch?.(claim);
     }, [buildClaim, onAddToBatch]);
 
+    const handleSubmitOnchain = useCallback(async () => {
+      const claim = buildClaim();
+      if (!claim) return;
+
+      clearError();
+      setOnchainSuccessMessage(null);
+
+      const subjectResolution: ProtocolAtomResolution =
+        subjectAtom ?? { mode: 'create', label: subjectAtomLabel(subject, subjectType) };
+      const predicateResolution: ProtocolAtomResolution =
+        predicateAtom ??
+        {
+          mode: 'create',
+          label: defaultPredicateAtomLabel(predicateId!, subjectType),
+        };
+      const objectResolution: ProtocolAtomResolution =
+        objectAtom ?? { mode: 'create', label: object.trim() };
+
+      const result = await submit(
+        claim,
+        subjectResolution,
+        predicateResolution,
+        objectResolution
+      );
+      if (result) {
+        onSave?.(claim);
+        const shortHash = `${result.tripleTransactionHash.slice(0, 10)}…`;
+        const shortTripleId = `${result.tripleTermId.slice(0, 10)}…`;
+        setOnchainSuccessMessage(
+          `Claim submitted on Intuition. Triple ${shortTripleId} (tx ${shortHash})`
+        );
+      }
+    }, [
+      buildClaim,
+      submit,
+      subjectAtom,
+      predicateAtom,
+      objectAtom,
+      subject,
+      subjectType,
+      predicateId,
+      object,
+      onSave,
+      clearError,
+    ]);
+
     const handleExampleClick = useCallback((example: ExampleClaim) => {
       setSubject(example.subject);
       setSubjectType(example.subjectType);
@@ -131,47 +288,177 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       onPredicateChange?.(example.predicateId);
       setObject(example.object);
       setObjectType(example.objectType);
+      setSubjectAtom(null);
+      setPredicateAtom(null);
+      setObjectAtom(null);
     }, [onSubjectTypeChange, onPredicateChange]);
+
+    const predicateLabel =
+      predicateAtom?.label ??
+      (predicateId ? defaultPredicateAtomLabel(predicateId, subjectType) : '');
+
+    const subjectLabel = resolveSubjectDisplayLabel(subject, subjectType, subjectAtom);
+    const objectLabel = resolveObjectDisplayLabel(object, objectAtom);
+
+    const onchainHint = isWrongNetwork
+      ? 'Switch to Intuition Mainnet to submit on-chain.'
+      : !canSubmit && !isSubmitting
+        ? 'Connect your wallet to submit on-chain.'
+        : null;
+
+    const hasContent =
+      Boolean(subject.trim()) ||
+      subjectType !== null ||
+      predicateId !== null ||
+      Boolean(object.trim()) ||
+      objectType !== null ||
+      subjectAtom !== null ||
+      predicateAtom !== null ||
+      objectAtom !== null;
+
+    const handleClear = useCallback(() => {
+      setSubject('');
+      setSubjectType(null);
+      setPredicateId(null);
+      setObject('');
+      setObjectType(null);
+      setSubjectAtom(null);
+      setPredicateAtom(null);
+      setObjectAtom(null);
+      setOnchainSuccessMessage(null);
+      clearError();
+      onSubjectTypeChange?.(null);
+      onSubjectValueChange?.('');
+      onPredicateChange?.(null);
+    }, [clearError, onSubjectTypeChange, onSubjectValueChange, onPredicateChange]);
 
     return (
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6" data-tutorial-step="claim-builder">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 gap-3">
           <h2 className="text-lg font-semibold text-[var(--color-text)]">Claim Builder</h2>
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={!hasContent || isSubmitting}
+            className="focus-ring h-8 shrink-0 rounded-md px-3 text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)] disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Clear claim builder"
+          >
+            Clear
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <SubjectInput
-            value={subject}
-            onChange={handleSubjectChange}
-            selectedType={subjectType}
-            onTypeChange={handleSubjectTypeChange}
-            onExampleClick={handleExampleClick}
-          />
-          <PredicateSelect
-            subjectType={subjectType}
-            value={predicateId}
-            onChange={handlePredicateChange}
-            disabled={!hasSubject}
-          />
-          <ObjectInput
-            predicateId={predicateId}
-            value={object}
-            onChange={setObject}
-            selectedType={objectType}
-            onTypeChange={setObjectType}
-            disabled={!hasPredicate}
-          />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <SubjectInput
+              value={subject}
+              onChange={handleSubjectChange}
+              selectedType={subjectType}
+              onTypeChange={handleSubjectTypeChange}
+              onExampleClick={handleExampleClick}
+            />
+            <AtomSuggestions
+              fieldLabel="subject"
+              query={subjectAtomSearchQuery(subject, subjectType)}
+              enabled={hasSubject}
+              selection={subjectAtom}
+              onSelectExisting={(suggestion) =>
+                setSubjectAtom({
+                  mode: 'existing',
+                  termId: suggestion.termId,
+                  label: suggestion.label,
+                })
+              }
+              onChooseCreate={() =>
+                setSubjectAtom({
+                  mode: 'create',
+                  label: subjectAtomLabel(subject, subjectType),
+                })
+              }
+              onClearSelection={() => setSubjectAtom(null)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <PredicateSelect
+              subjectType={subjectType}
+              value={predicateId}
+              onChange={handlePredicateChange}
+              disabled={!hasSubject}
+            />
+            <AtomSuggestions
+              fieldLabel="predicate"
+              query={predicateId ? predicateSearchQuery(predicateId) : ''}
+              enabled={hasPredicate}
+              selection={predicateAtom}
+              onSelectExisting={(suggestion) =>
+                setPredicateAtom({
+                  mode: 'existing',
+                  termId: suggestion.termId,
+                  label: suggestion.label,
+                })
+              }
+              onChooseCreate={() =>
+                setPredicateAtom({
+                  mode: 'create',
+                  label: defaultPredicateAtomLabel(predicateId!, subjectType),
+                })
+              }
+              onClearSelection={() => setPredicateAtom(null)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <ObjectInput
+              predicateId={predicateId}
+              value={object}
+              onChange={setObject}
+              selectedType={objectType}
+              onTypeChange={setObjectType}
+              disabled={!hasPredicate}
+            />
+            <AtomSuggestions
+              fieldLabel="object"
+              query={object}
+              enabled={hasPredicate && Boolean(object.trim())}
+              selection={objectAtom}
+              onSelectExisting={(suggestion) =>
+                setObjectAtom({
+                  mode: 'existing',
+                  termId: suggestion.termId,
+                  label: suggestion.label,
+                })
+              }
+              onChooseCreate={() =>
+                setObjectAtom({ mode: 'create', label: object.trim() })
+              }
+              onClearSelection={() => setObjectAtom(null)}
+            />
+          </div>
         </div>
 
         <div className="mt-6">
           <ClaimPreview
-            subject={subject}
-            subjectType={subjectType}
-            predicateId={predicateId}
-            object={object}
-            objectType={objectType}
+            {...claimFormState}
+            subjectLabel={subjectLabel}
+            predicateLabel={predicateLabel}
+            objectLabel={objectLabel}
+            subjectTermId={
+              subjectAtom?.mode === 'existing' ? subjectAtom.termId : undefined
+            }
+            predicateTermId={
+              predicateAtom?.mode === 'existing' ? predicateAtom.termId : undefined
+            }
+            objectTermId={
+              objectAtom?.mode === 'existing' ? objectAtom.termId : undefined
+            }
             onSave={onSave ? handleSave : undefined}
             onAddToBatch={onAddToBatch ? handleAddToBatch : undefined}
+            onSubmitOnchain={handleSubmitOnchain}
+            canSubmitOnchain={canSubmit}
+            isSubmittingOnchain={isSubmitting}
+            onchainProgressLabel={progressLabel}
+            onchainError={onchainError ?? onchainHint}
+            onchainSuccessMessage={onchainSuccessMessage}
           />
         </div>
       </div>

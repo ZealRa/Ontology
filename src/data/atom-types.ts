@@ -87,6 +87,21 @@ export const ATOM_TYPES: AtomType[] = [
 
   // ─── Identity ──────────────────────────────────────────────
   {
+    id: 'Account',
+    label: 'Account',
+    schemaOrgType: null,
+    pluginId: 'account',
+    category: 'identity',
+    description:
+      'An Intuition protocol account — profile label linked to an on-chain atom (wallet / ENS identity on the graph).',
+    onchainFields: [
+      { name: 'label', type: 'string', required: true, description: 'Display name or ENS' },
+    ],
+    enrichmentFields: [
+      { name: 'image', type: 'string', required: false, description: 'Profile image URL' },
+    ],
+  },
+  {
     id: 'Person',
     label: 'Person',
     schemaOrgType: 'Person',
