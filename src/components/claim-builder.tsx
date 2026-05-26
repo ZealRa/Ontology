@@ -258,7 +258,14 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
         claim,
         subjectResolution,
         predicateResolution,
-        objectResolution
+        objectResolution,
+        {
+          subjectLabel: resolveSubjectDisplayLabel(subject, subjectType, subjectAtom),
+          predicateLabel:
+            predicateAtom?.label ??
+            defaultPredicateAtomLabel(predicateId!, subjectType),
+          objectLabel: resolveObjectDisplayLabel(object, objectAtom),
+        }
       );
       if (result) {
         onSave?.(claim);

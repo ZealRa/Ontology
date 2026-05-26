@@ -7,6 +7,11 @@ import {
   isClaimStructurallyComplete,
   type ClaimFormState,
 } from '../lib/claim-readiness';
+import {
+  isFormattedOnchainError,
+  type FormattedOnchainError,
+} from '../lib/intuition/format-onchain-error';
+import { OnchainSubmitError } from './onchain-submit-error';
 
 interface ClaimPreviewProps extends ClaimFormState {
   subjectLabel: string;
@@ -21,7 +26,7 @@ interface ClaimPreviewProps extends ClaimFormState {
   canSubmitOnchain?: boolean;
   isSubmittingOnchain?: boolean;
   onchainProgressLabel?: string | null;
-  onchainError?: string | null;
+  onchainError?: string | FormattedOnchainError | null;
   onchainSuccessMessage?: string | null;
 }
 
@@ -178,9 +183,12 @@ export function ClaimPreview({
             />
           )}
 
-          {onchainError && (
-            <p className="mt-2 text-xs text-red-400">{onchainError}</p>
-          )}
+          {onchainError &&
+            (isFormattedOnchainError(onchainError) ? (
+              <OnchainSubmitError error={onchainError} />
+            ) : (
+              <p className="mt-2 text-xs text-amber-400/90">{onchainError}</p>
+            ))}
           {onchainSuccessMessage && (
             <p className="mt-2 text-xs text-emerald-400/80">{onchainSuccessMessage}</p>
           )}

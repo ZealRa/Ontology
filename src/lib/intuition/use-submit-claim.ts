@@ -3,6 +3,11 @@ import { useCallback, useState } from 'react';
 import type { ClaimEntry } from '../../types';
 import { useIntuitionChain } from '../wallet/use-intuition-chain';
 import { useWalletSession } from '../wallet/use-wallet-session';
+import {
+  formatOnchainError,
+  type FormattedOnchainError,
+} from './format-onchain-error';
+export type { FormattedOnchainError } from './format-onchain-error';
 import { submitClaimOnchain } from './submit-claim';
 import type { ProtocolAtomResolution, SubmitClaimResult } from './types';
 import { useIntuitionWriteConfig } from './use-intuition-write-config';
@@ -14,7 +19,7 @@ export function useSubmitClaim() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressLabel, setProgressLabel] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormattedOnchainError | null>(null);
 
   const canSubmit = Boolean(writeConfig && authenticated && !isWrongNetwork);
 
@@ -25,10 +30,18 @@ export function useSubmitClaim() {
       claim: Omit<ClaimEntry, 'id' | 'timestamp'>,
       subjectResolution: ProtocolAtomResolution,
       predicateResolution: ProtocolAtomResolution,
-      objectResolution: ProtocolAtomResolution
+      objectResolution: ProtocolAtomResolution,
+      displayLabels?: {
+        subjectLabel: string;
+        predicateLabel: string;
+        objectLabel: string;
+      }
     ): Promise<SubmitClaimResult | null> => {
       if (!writeConfig) {
-        setError('Connect your wallet on Intuition Mainnet to submit.');
+        setError({
+          title: 'Wallet not ready',
+          description: 'Connect your wallet on the selected Intuition network to submit.',
+        });
         return null;
       }
 
@@ -48,9 +61,16 @@ export function useSubmitClaim() {
         setProgressLabel(null);
         return result;
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'On-chain submission failed';
-        setError(message);
+        if (import.meta.env.DEV) {
+          console.error('On-chain claim submission failed:', err);
+        }
+        setError(
+          formatOnchainError(err, {
+            subjectLabel: displayLabels?.subjectLabel ?? claim.subject,
+            predicateLabel: displayLabels?.predicateLabel ?? claim.predicateLabel,
+            objectLabel: displayLabels?.objectLabel ?? claim.object,
+          })
+        );
         setProgressLabel(null);
         return null;
       } finally {
