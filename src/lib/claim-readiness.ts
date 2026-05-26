@@ -35,7 +35,7 @@ export function isClaimStructurallyComplete(input: ClaimFormState): boolean {
 
 /** Show save / submit controls once the claim sentence is filled in (types may still be missing). */
 export function canShowClaimActions(input: ClaimFormState): boolean {
-  if (!input.subjectType || !input.predicateId || !input.object.trim()) {
+  if (!input.subjectType || !input.predicateId?.trim() || !input.object.trim()) {
     return false;
   }
 
@@ -61,8 +61,8 @@ export function getClaimBlockers(input: ClaimFormState): string[] {
     blockers.push('Select a subject type.');
   }
 
-  if (!input.predicateId) {
-    blockers.push('Select a predicate.');
+  if (!input.predicateId?.trim()) {
+    blockers.push('Enter or select a predicate.');
   }
 
   const subjectLabel = resolveSubjectDisplayLabel(

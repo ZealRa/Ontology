@@ -1,4 +1,4 @@
-import { PREDICATES } from '../data/predicates';
+import { getPredicateRule } from '../lib/intuition/predicate-resolution';
 import { ATOM_TYPES, ATOM_CATEGORIES } from '../data/atom-types';
 import { isSelfSubject } from '../lib/conjugate';
 import {
@@ -65,10 +65,11 @@ export function ClaimPreview({
   if (!showPreview) return null;
 
   const hasSubject = subjectLabel.trim().length > 0;
-  const hasPredicate = predicateId !== null;
+  const hasPredicate = Boolean(predicateId?.trim());
   const hasObject = objectLabel.trim().length > 0;
 
-  const predicate = PREDICATES.find((p) => p.id === predicateId);
+  const predicate = predicateId ? getPredicateRule(predicateId) : undefined;
+  const isCustomPredicate = hasPredicate && !predicate;
   const subjectAtomType = ATOM_TYPES.find((t) => t.id === subjectType);
   const objectAtomType = ATOM_TYPES.find((t) => t.id === objectType);
 
@@ -79,15 +80,19 @@ export function ClaimPreview({
 
   let isValid = false;
   let validationMessage = '';
-  if (structurallyComplete && predicate && subjectType && objectType) {
-    const subjectOk = predicate.subjectTypes.includes(subjectType);
-    const objectOk = predicate.objectTypes.includes(objectType);
-    isValid = subjectOk && objectOk;
+  if (structurallyComplete && hasPredicate && subjectType && objectType) {
+    if (predicate) {
+      const subjectOk = predicate.subjectTypes.includes(subjectType);
+      const objectOk = predicate.objectTypes.includes(objectType);
+      isValid = subjectOk && objectOk;
 
-    if (!subjectOk) {
-      validationMessage = `"${predicate.label}" doesn't work with ${subjectType} subjects`;
-    } else if (!objectOk) {
-      validationMessage = `"${predicate.label}" expects: ${predicate.objectTypes.join(', ')}`;
+      if (!subjectOk) {
+        validationMessage = `"${predicate.label}" doesn't work with ${subjectType} subjects`;
+      } else if (!objectOk) {
+        validationMessage = `"${predicate.label}" expects: ${predicate.objectTypes.join(', ')}`;
+      }
+    } else {
+      isValid = true;
     }
   }
 
@@ -113,10 +118,18 @@ export function ClaimPreview({
         {showActions && (
           <span
             className={`text-xs font-medium ${
-              structurallyComplete && isValid ? 'text-emerald-400' : 'text-amber-400'
+              structurallyComplete && isValid
+                ? isCustomPredicate
+                  ? 'text-[var(--color-accent)]'
+                  : 'text-emerald-400'
+                : 'text-amber-400'
             }`}
           >
-            {structurallyComplete && isValid ? 'Ready' : 'Almost ready'}
+            {structurallyComplete && isValid
+              ? isCustomPredicate
+                ? 'Custom predicate'
+                : 'Ready'
+              : 'Almost ready'}
           </span>
         )}
         {isSelf && (

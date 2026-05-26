@@ -126,7 +126,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
     }, [object, clearError]);
 
     const hasSubject = canResolveSubjectAtoms(subject, subjectType);
-    const hasPredicate = predicateId !== null;
+    const hasPredicate = Boolean(predicateId?.trim());
 
     const claimFormState = {
       subject,
