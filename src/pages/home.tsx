@@ -7,8 +7,10 @@ import { PredicateExplorer } from '../components/predicate-explorer';
 import { ClaimHistory } from '../components/claim-history';
 import { BatchBuilder } from '../components/batch-builder';
 import { useClaimWorkspace } from '../lib/use-claim-workspace';
+import { useIntuitionNetwork } from '../lib/wallet/intuition-network-context';
 
 export function HomePage() {
+  const { isStaticNetwork } = useIntuitionNetwork();
   const {
     selectedTypeId,
     setSelectedTypeId,
@@ -23,18 +25,20 @@ export function HomePage() {
 
   return (
     <main className="px-4 sm:px-6 py-8 space-y-8">
-      <div className="space-y-3" data-tutorial-step="claim-builder">
-        <OntologyClaimCallout />
-        <ClaimBuilder
-          ref={claimBuilderRef}
-          onSubjectTypeChange={setSelectedTypeId}
-          onPredicateChange={setSelectedPredicateId}
-          onSave={saveClaim}
-          onAddToBatch={addToBatch}
-        />
-        <ClaimHistory searchQuery={searchQuery} />
-        <BatchBuilder searchQuery={searchQuery} />
-      </div>
+      {!isStaticNetwork && (
+        <div className="space-y-3" data-tutorial-step="claim-builder">
+          <OntologyClaimCallout />
+          <ClaimBuilder
+            ref={claimBuilderRef}
+            onSubjectTypeChange={setSelectedTypeId}
+            onPredicateChange={setSelectedPredicateId}
+            onSave={saveClaim}
+            onAddToBatch={addToBatch}
+          />
+          <ClaimHistory searchQuery={searchQuery} />
+          <BatchBuilder searchQuery={searchQuery} />
+        </div>
+      )}
 
       <div
         className="grid grid-cols-1 gap-2 lg:grid-cols-3"
