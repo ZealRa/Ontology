@@ -9,6 +9,12 @@ import {
 import type { WriteConfig } from '@0xintuition/sdk';
 import { formatEther } from 'viem';
 
+import {
+  findOntologySlotTriple,
+  type OntologySlotRef,
+} from './ontology-slots';
+import { findAtomsByLabel } from './ontology-graphql';
+import { ONTOLOGY_META_PREDICATE_LABEL } from './ontology-vocabulary';
 import type { ProtocolAtomResolution } from './types';
 
 /** GraphQL indexing poll — matches SDK example defaults. */
@@ -34,7 +40,32 @@ async function getTripleAssetsPerStatement(config: WriteConfig): Promise<bigint>
   return tripleCost + generalConfig.minDeposit;
 }
 
-/** Estimate TRUST required for a full claim (new atoms + triple statement). */
+/** Estimate TRUST for ontology nested proposal (atoms + slot if missing + meta triple). */
+export async function estimateOntologyProposalCost(
+  config: WriteConfig,
+  proposedPredicateResolution: ProtocolAtomResolution,
+  slotRef: OntologySlotRef
+): Promise<bigint> {
+  const [atomCost, triplePayment] = await Promise.all([
+    multiVaultGetAtomCost(config),
+    getTripleAssetsPerStatement(config),
+  ]);
+
+  let newAtoms = proposedPredicateResolution.mode === 'create' ? 1 : 0;
+
+  const metaExists = (await findAtomsByLabel(ONTOLOGY_META_PREDICATE_LABEL, 1)).length > 0;
+  if (!metaExists) newAtoms += 1;
+
+  const slotTriple = await findOntologySlotTriple(slotRef);
+  if (!slotTriple) {
+    newAtoms += 3;
+    return atomCost * BigInt(newAtoms) + triplePayment * 2n;
+  }
+
+  return atomCost * BigInt(newAtoms) + triplePayment;
+}
+
+/** @deprecated Use estimateOntologyProposalCost for ontology claims. */
 export async function estimateClaimOnchainCost(
   config: WriteConfig,
   subjectResolution: ProtocolAtomResolution,

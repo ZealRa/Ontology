@@ -8,18 +8,18 @@ import { useIntuitionChain } from './use-intuition-chain';
  * after connect. If the user declines or it fails, the manual switch remains available.
  */
 export function IntuitionNetworkSync() {
-  const { chainId: targetChainId } = useIntuitionNetwork();
+  const { chainId: targetChainId, isStaticNetwork } = useIntuitionNetwork();
   const { isWrongNetwork, switchToIntuitionChain } = useIntuitionChain();
   const attemptedForChainRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isWrongNetwork || attemptedForChainRef.current === targetChainId) return;
+    if (isStaticNetwork || !isWrongNetwork || attemptedForChainRef.current === targetChainId) return;
 
     attemptedForChainRef.current = targetChainId;
     void switchToIntuitionChain(targetChainId).catch((error) => {
       console.warn('Auto switch to Intuition network failed:', error);
     });
-  }, [isWrongNetwork, switchToIntuitionChain, targetChainId]);
+  }, [isStaticNetwork, isWrongNetwork, switchToIntuitionChain, targetChainId]);
 
   return null;
 }

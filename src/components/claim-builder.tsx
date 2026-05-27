@@ -259,22 +259,18 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       clearError();
       setOnchainSuccessMessage(null);
 
-      const subjectResolution: ProtocolAtomResolution =
-        subjectAtom ?? { mode: 'create', label: subjectAtomLabel(subject, subjectType) };
       const predicateResolution: ProtocolAtomResolution =
         predicateAtom ??
         {
           mode: 'create',
           label: defaultPredicateAtomLabel(predicateId!, subjectType),
         };
-      const objectResolution: ProtocolAtomResolution =
-        objectAtom ?? { mode: 'create', label: object.trim() };
 
       const result = await submit(
         claim,
-        subjectResolution,
+        { mode: 'create', label: '' },
         predicateResolution,
-        objectResolution,
+        { mode: 'create', label: '' },
         {
           subjectLabel: resolveSubjectDisplayLabel(subject, subjectType, subjectAtom),
           predicateLabel:
@@ -286,9 +282,8 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       if (result) {
         onSave?.(claim);
         const shortHash = `${result.tripleTransactionHash.slice(0, 10)}…`;
-        const shortTripleId = `${result.tripleTermId.slice(0, 10)}…`;
         setOnchainSuccessMessage(
-          `Claim submitted on Intuition. Triple ${shortTripleId} (tx ${shortHash})`
+          `Proposed « ${result.proposedPredicateLabel} » for ${result.slotDisplayLine} on Intuition (tx ${shortHash}).`
         );
       }
     }, [

@@ -66,13 +66,20 @@ export function formatOnchainError(
   const raw = collectErrorText(error);
   const claimLine = claimContextFromLabels(context);
 
-  if (/MultiVault_TripleExists/i.test(raw)) {
+  if (/MultiVault_TripleExists/i.test(raw) || /already proposed for slot/i.test(raw)) {
+    const isOntologyMeta = /already proposed for slot/i.test(raw);
     return {
-      title: 'This claim already exists',
-      description: claimLine
-        ? `The triple « ${claimLine} » is already registered on Intuition. Creating it again is not allowed.`
-        : 'This subject–predicate–object combination is already registered on Intuition. Creating it again is not allowed.',
-      hint: 'Open Protocol search to find the existing triple, or stake on it instead of submitting a duplicate.',
+      title: isOntologyMeta ? 'This predicate is already proposed' : 'This claim already exists',
+      description: isOntologyMeta
+        ? raw.includes('«')
+          ? raw.replace(/^[^:]+:\s*/i, '').trim()
+          : 'This predicate was already proposed for this ontology slot on Intuition.'
+        : claimLine
+          ? `The triple « ${claimLine} » is already registered on Intuition. Creating it again is not allowed.`
+          : 'This subject–predicate–object combination is already registered on Intuition.',
+      hint: isOntologyMeta
+        ? 'Open the matrix menu for this slot to see existing proposals, or pick a different predicate.'
+        : 'Open Protocol search to find the existing triple, or stake on it instead of submitting a duplicate.',
     };
   }
 

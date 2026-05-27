@@ -15,6 +15,7 @@ import { ChevronDownIcon } from './wallet-icons';
 const NETWORK_OPTIONS: { id: IntuitionNetworkId; label: string }[] = [
   { id: 'mainnet', label: 'Intuition' },
   { id: 'testnet', label: 'Intuition Testnet' },
+  { id: 'static', label: 'Static ontology' },
 ];
 
 export function NetworkSwitcher() {
@@ -33,7 +34,7 @@ export function NetworkSwitcher() {
       setNetwork(next);
       setOpen(false);
 
-      if (isConnected) {
+      if (isConnected && next !== 'static') {
         const chainId: IntuitionChainId =
           next === 'testnet' ? INTUITION_TESTNET_CHAIN_ID : INTUITION_MAINNET_CHAIN_ID;
         try {

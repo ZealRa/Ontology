@@ -32,7 +32,7 @@ export function ProtocolSearchResults({ query }: ProtocolSearchResultsProps) {
           On-chain (Intuition)
         </span>
         <Link
-          to={`/glossary?q=${encodeURIComponent(trimmed)}`}
+          to={`/protocol?q=${encodeURIComponent(trimmed)}`}
           className="text-[10px] text-[var(--color-accent)] hover:underline"
         >
           Open in Protocol search
