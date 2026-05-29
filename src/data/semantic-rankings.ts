@@ -127,12 +127,87 @@ function buildMappings(
   return mappings;
 }
 
+/** Maximum entity types selectable in the matrix funnel filter. */
+export const MAX_MATRIX_FILTER_TYPES = 2;
+
+export type MatrixTypePair = {
+  subjectType: string;
+  objectType: string;
+};
+
+/** All entity type ids that appear in at least one matrix slot. */
+export function getMatrixTypeIdsFromPairs(pairs: MatrixTypePair[]): Set<string> {
+  const ids = new Set<string>();
+  for (const { subjectType, objectType } of pairs) {
+    ids.add(subjectType);
+    ids.add(objectType);
+  }
+  return ids;
+}
+
+/** Types that share a slot with `typeId` (valid second pick for the funnel). */
+export function getMatrixPartnerTypeIds(typeId: string, pairs: MatrixTypePair[]): Set<string> {
+  const partners = new Set<string>();
+  for (const { subjectType, objectType } of pairs) {
+    if (subjectType === typeId) partners.add(objectType);
+    if (objectType === typeId) partners.add(subjectType);
+  }
+  return partners;
+}
+
 /**
- * Builds entity-to-entity mappings filtered to combinations
- * involving any of the given type IDs (as subject OR object).
+ * Types to show in the matrix filter tag cloud.
+ * - No selection: all types present in the matrix
+ * - One selected: that type plus partners that share a slot with it
+ */
+export function getSuggestedMatrixFilterTypeIds(
+  pairs: MatrixTypePair[],
+  selectedTypeIds: ReadonlySet<string>
+): Set<string> {
+  const inMatrix = getMatrixTypeIdsFromPairs(pairs);
+  if (selectedTypeIds.size === 0) return inMatrix;
+
+  const suggested = new Set<string>();
+  for (const typeId of selectedTypeIds) {
+    suggested.add(typeId);
+    if (inMatrix.has(typeId)) {
+      for (const partner of getMatrixPartnerTypeIds(typeId, pairs)) {
+        if (inMatrix.has(partner)) suggested.add(partner);
+      }
+    }
+  }
+  return suggested;
+}
+
+/**
+ * Matrix type filter (funnel):
+ * - 0 types: show all
+ * - 1 type: slots where that type is subject or object
+ * - 2 types: both endpoints must be selected, and every selected type must appear
+ *   in the slot (e.g. Person + Self → Person—?—Self or Self—?—Person, not Person—?—Person)
+ */
+export function mappingMatchesTypeFilter(
+  subjectType: string,
+  objectType: string,
+  filterTypeIds: ReadonlySet<string> | string[]
+): boolean {
+  const selected =
+    filterTypeIds instanceof Set ? filterTypeIds : new Set(filterTypeIds);
+  if (selected.size === 0) return true;
+  if (selected.size === 1) {
+    const only = [...selected][0]!;
+    return subjectType === only || objectType === only;
+  }
+  if (!selected.has(subjectType) || !selected.has(objectType)) return false;
+
+  const slotTypes = new Set([subjectType, objectType]);
+  return [...selected].every((typeId) => slotTypes.has(typeId));
+}
+
+/**
+ * Builds entity-to-entity mappings filtered by {@link mappingMatchesTypeFilter}.
  */
 export function getEntityMappingsForTypes(typeIds: string[]): EntityMapping[] {
-  const typeSet = new Set(typeIds);
   const all = getAllEntityMappings();
-  return all.filter((m) => typeSet.has(m.subjectType) || typeSet.has(m.objectType));
+  return all.filter((m) => mappingMatchesTypeFilter(m.subjectType, m.objectType, typeIds));
 }
