@@ -14,6 +14,7 @@ import {
   isClaimStructurallyComplete,
   resolveObjectDisplayLabel,
   resolveSubjectDisplayLabel,
+  shouldEnforceCuratedClaimTypeRules,
   soleObjectTypeForPredicate,
   subjectAtomSearchQuery,
 } from '../lib/claim-readiness';
@@ -76,7 +77,8 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       clearError,
       isWrongNetwork,
     } = useSubmitClaim();
-    const { networkLabel } = useIntuitionNetwork();
+    const { networkLabel, isStaticNetwork } = useIntuitionNetwork();
+    const enforceCuratedTypeRules = shouldEnforceCuratedClaimTypeRules(isStaticNetwork);
 
     const subjectRef = useRef(subject);
     const subjectTypeRef = useRef(subjectType);
@@ -138,11 +140,11 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
     };
 
     useEffect(() => {
-      const onlyType = soleObjectTypeForPredicate(predicateId);
+      const onlyType = soleObjectTypeForPredicate(predicateId, enforceCuratedTypeRules);
       if (onlyType && objectType !== onlyType) {
         setObjectType(onlyType);
       }
-    }, [predicateId, objectType]);
+    }, [predicateId, objectType, enforceCuratedTypeRules]);
 
     const buildClaim = useCallback((): Omit<ClaimEntry, 'id' | 'timestamp'> | null => {
       if (
@@ -411,6 +413,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
               value={predicateId}
               onChange={handlePredicateChange}
               disabled={!hasSubject}
+              enforceCuratedTypeRules={enforceCuratedTypeRules}
             />
             <AtomSuggestions
               fieldLabel="predicate"
@@ -442,6 +445,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
               selectedType={objectType}
               onTypeChange={setObjectType}
               disabled={!hasPredicate}
+              enforceCuratedTypeRules={enforceCuratedTypeRules}
             />
             <AtomSuggestions
               fieldLabel="object"
@@ -487,6 +491,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
             onchainError={onchainError ?? onchainHint}
             onchainSuccessMessage={onchainSuccessMessage}
             submitNetworkLabel={networkLabel}
+            enforceCuratedTypeRules={enforceCuratedTypeRules}
           />
         </div>
       </div>

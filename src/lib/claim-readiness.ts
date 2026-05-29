@@ -1,6 +1,39 @@
-import { getObjectTypesForPredicate } from '../data/predicates';
+import { getObjectTypesForPredicate, PREDICATES } from '../data/predicates';
+import { getPredicateRule } from './intuition/predicate-resolution';
 import { isSelfSubject } from './conjugate';
 import type { ProtocolAtomResolution } from './intuition/types';
+
+/** Static reference mode enforces curated subject/predicate/object type rules. */
+export function shouldEnforceCuratedClaimTypeRules(isStaticNetwork: boolean): boolean {
+  return isStaticNetwork;
+}
+
+/** Whether subject + predicate + object types satisfy curated predicate rules. */
+export function isClaimTypeCompatible(
+  subjectType: string,
+  predicateId: string,
+  objectType: string,
+  enforceCuratedRules: boolean
+): { valid: boolean; message?: string } {
+  if (!enforceCuratedRules) return { valid: true };
+
+  const predicate = getPredicateRule(predicateId);
+  if (!predicate) return { valid: true };
+
+  if (!predicate.subjectTypes.includes(subjectType)) {
+    return {
+      valid: false,
+      message: `"${predicate.label}" doesn't work with ${subjectType} subjects`,
+    };
+  }
+  if (!predicate.objectTypes.includes(objectType)) {
+    return {
+      valid: false,
+      message: `"${predicate.label}" expects: ${predicate.objectTypes.join(', ')}`,
+    };
+  }
+  return { valid: true };
+}
 
 export function resolveSubjectDisplayLabel(
   subject: string,
@@ -106,9 +139,21 @@ export function subjectAtomSearchQuery(
   return subject;
 }
 
-/** Auto-pick object type when the predicate allows only one. */
-export function soleObjectTypeForPredicate(predicateId: string | null): string | null {
-  if (!predicateId) return null;
+/** Auto-pick object type when the predicate allows only one (static reference mode only). */
+export function soleObjectTypeForPredicate(
+  predicateId: string | null,
+  enforceCuratedRules: boolean
+): string | null {
+  if (!enforceCuratedRules || !predicateId) return null;
   const types = getObjectTypesForPredicate(predicateId);
   return types.length === 1 ? types[0]! : null;
+}
+
+/** Predicate suggestions for the claim builder subject type. */
+export function predicatesForClaimBuilder(
+  subjectTypeId: string | null,
+  enforceCuratedRules: boolean
+) {
+  if (!enforceCuratedRules || !subjectTypeId) return PREDICATES;
+  return PREDICATES.filter((p) => p.subjectTypes.includes(subjectTypeId));
 }
