@@ -5,6 +5,7 @@ import {
   canShowClaimActions,
   getClaimBlockers,
   isClaimStructurallyComplete,
+  isClaimTypeCompatible,
   type ClaimFormState,
 } from '../lib/claim-readiness';
 import {
@@ -33,6 +34,7 @@ interface ClaimPreviewProps extends ClaimFormState {
   onchainError?: string | FormattedOnchainError | null;
   onchainSuccessMessage?: string | null;
   submitNetworkLabel?: string;
+  enforceCuratedTypeRules?: boolean;
 }
 
 export function ClaimPreview({
@@ -57,6 +59,7 @@ export function ClaimPreview({
   onchainError,
   onchainSuccessMessage,
   submitNetworkLabel = 'the selected Intuition network',
+  enforceCuratedTypeRules = false,
 }: ClaimPreviewProps) {
   const formState: ClaimFormState = {
     subject,
@@ -86,19 +89,14 @@ export function ClaimPreview({
   let isValid = false;
   let validationMessage = '';
   if (structurallyComplete && hasPredicate && subjectType && objectType) {
-    if (predicate) {
-      const subjectOk = predicate.subjectTypes.includes(subjectType);
-      const objectOk = predicate.objectTypes.includes(objectType);
-      isValid = subjectOk && objectOk;
-
-      if (!subjectOk) {
-        validationMessage = `"${predicate.label}" doesn't work with ${subjectType} subjects`;
-      } else if (!objectOk) {
-        validationMessage = `"${predicate.label}" expects: ${predicate.objectTypes.join(', ')}`;
-      }
-    } else {
-      isValid = true;
-    }
+    const compatibility = isClaimTypeCompatible(
+      subjectType,
+      predicateId!,
+      objectType,
+      enforceCuratedTypeRules
+    );
+    isValid = compatibility.valid;
+    validationMessage = compatibility.message ?? '';
   }
 
   const canSubmit =

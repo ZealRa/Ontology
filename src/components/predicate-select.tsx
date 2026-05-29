@@ -7,7 +7,7 @@ import {
   predicateDisplayLabel,
   resolvePredicateIdFromInput,
 } from '../lib/intuition/predicate-resolution';
-import { getPredicatesForSubject } from '../data/predicates';
+import { predicatesForClaimBuilder } from '../lib/claim-readiness';
 import { ATOM_TYPES } from '../data/atom-types';
 import { LockNote } from './lock-note';
 
@@ -16,11 +16,18 @@ interface PredicateSelectProps {
   value: string | null;
   onChange: (predicateId: string | null) => void;
   disabled: boolean;
+  enforceCuratedTypeRules?: boolean;
 }
 
-export function PredicateSelect({ subjectType, value, onChange, disabled }: PredicateSelectProps) {
+export function PredicateSelect({
+  subjectType,
+  value,
+  onChange,
+  disabled,
+  enforceCuratedTypeRules = false,
+}: PredicateSelectProps) {
   const listId = useId();
-  const predicates = subjectType ? getPredicatesForSubject(subjectType) : [];
+  const predicates = predicatesForClaimBuilder(subjectType, enforceCuratedTypeRules);
   const knownRule = value ? getPredicateRule(value) : undefined;
   const isCustom = Boolean(value?.trim() && !knownRule);
 
@@ -106,16 +113,20 @@ export function PredicateSelect({ subjectType, value, onChange, disabled }: Pred
         <p className="text-xs text-[var(--color-text-muted)]">{knownRule.description}</p>
       )}
 
-      {!disabled && onlyPredicate && subjectAtom && isKnownPredicateId(onlyPredicate.id) && (
-        <LockNote>
-          Suggested for{' '}
-          <code className="text-[var(--color-text-secondary)]">{subjectAtom.label}</code>:{' '}
-          <code className="text-[var(--color-text-secondary)]">{onlyPredicate.label}</code>
-          . You can still type another predicate.
-        </LockNote>
-      )}
+      {enforceCuratedTypeRules &&
+        !disabled &&
+        onlyPredicate &&
+        subjectAtom &&
+        isKnownPredicateId(onlyPredicate.id) && (
+          <LockNote>
+            Suggested for{' '}
+            <code className="text-[var(--color-text-secondary)]">{subjectAtom.label}</code>:{' '}
+            <code className="text-[var(--color-text-secondary)]">{onlyPredicate.label}</code>
+            . You can still type another predicate.
+          </LockNote>
+        )}
 
-      {!disabled && predicates.length === 0 && subjectType && (
+      {enforceCuratedTypeRules && !disabled && predicates.length === 0 && subjectType && (
         <p className="text-xs text-amber-400">
           No curated predicates for {subjectType} — type your own relationship.
         </p>

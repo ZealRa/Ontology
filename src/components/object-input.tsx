@@ -12,6 +12,8 @@ interface ObjectInputProps {
   selectedType: string | null;
   onTypeChange: (typeId: string | null) => void;
   disabled: boolean;
+  /** When true (static reference), limit object types per curated predicate rules. */
+  enforceCuratedTypeRules?: boolean;
 }
 
 export function ObjectInput({
@@ -21,21 +23,27 @@ export function ObjectInput({
   selectedType,
   onTypeChange,
   disabled,
+  enforceCuratedTypeRules = false,
 }: ObjectInputProps) {
   const [showTypePicker, setShowTypePicker] = useState(false);
 
   const predicateRule = predicateId ? getPredicateRule(predicateId) : undefined;
   const isCustomPredicate = Boolean(predicateId?.trim() && !predicateRule);
-  const expectedTypes = predicateRule
-    ? getObjectTypesForPredicate(predicateId!)
-    : [];
+  const useAllTypes = !enforceCuratedTypeRules || isCustomPredicate;
+
+  const expectedTypes =
+    !useAllTypes && predicateRule ? getObjectTypesForPredicate(predicateId!) : [];
+
   const expectedAtomTypes = (
-    isCustomPredicate ? ATOM_TYPES : expectedTypes.map((id) => ATOM_TYPES.find((t) => t.id === id))
+    useAllTypes
+      ? ATOM_TYPES
+      : expectedTypes.map((id) => ATOM_TYPES.find((t) => t.id === id))
   ).filter((t): t is AtomType => t !== undefined);
 
   const selectedAtomType = ATOM_TYPES.find((t) => t.id === selectedType);
   const predicate = predicateRule;
-  const onlyExpected = expectedTypes.length === 1 ? expectedTypes[0] : null;
+  const onlyExpected =
+    enforceCuratedTypeRules && expectedTypes.length === 1 ? expectedTypes[0] : null;
   const onlyExpectedAtom = onlyExpected
     ? ATOM_TYPES.find((t) => t.id === onlyExpected)
     : undefined;
@@ -55,7 +63,7 @@ export function ObjectInput({
     !disabled &&
     Boolean(value.trim()) &&
     !selectedType &&
-    (expectedAtomTypes.length > 1 || isCustomPredicate);
+    (expectedAtomTypes.length > 1 || useAllTypes);
 
   return (
     <div className="flex flex-col gap-2">
@@ -69,7 +77,7 @@ export function ObjectInput({
           placeholder={
             disabled
               ? 'Select a predicate first'
-              : isCustomPredicate
+              : useAllTypes
                 ? 'Enter object and pick a type...'
                 : expectedTypes.length > 0
                   ? `Enter ${expectedTypes.join(' or ')}...`
@@ -105,14 +113,16 @@ export function ObjectInput({
         </LockNote>
       )}
 
-      {isCustomPredicate && !disabled && Boolean(predicateId?.trim()) && (
+      {useAllTypes && !disabled && Boolean(predicateId?.trim()) && (
         <p className="text-xs text-[var(--color-text-muted)]">
-          Custom predicate — choose any object type that fits your claim.
+          {isCustomPredicate
+            ? 'Custom predicate — choose any object type that fits your claim.'
+            : 'On-chain mode — any object type is allowed.'}
         </p>
       )}
 
       {!disabled && (showTypePicker || needsTypeChoice) && expectedAtomTypes.length > 1 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
           <span className="text-xs text-[var(--color-text-muted)] self-center mr-1">Type:</span>
           {expectedAtomTypes.map((atomType) => (
             <button
