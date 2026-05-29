@@ -12,6 +12,7 @@ import {
   getEntityMappingsForSubject,
   getEntityMappingsForTypes,
   getAllEntityMappings,
+  mappingMatchesTypeFilter,
   type EntityMapping,
 } from '../data/semantic-rankings';
 import type { PredicateRule } from '../data/predicates';
@@ -88,8 +89,8 @@ export function ClaimMatrix({
       if (subjectTypeId) {
         base = base.filter((m) => m.subjectType === subjectTypeId);
       } else if (filterTypeIds && filterTypeIds.size > 0) {
-        base = base.filter(
-          (m) => filterTypeIds.has(m.subjectType) || filterTypeIds.has(m.objectType)
+        base = base.filter((m) =>
+          mappingMatchesTypeFilter(m.subjectType, m.objectType, filterTypeIds)
         );
       }
     }
