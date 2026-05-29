@@ -126,7 +126,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
     }, [object, clearError]);
 
     const hasSubject = canResolveSubjectAtoms(subject, subjectType);
-    const hasPredicate = predicateId !== null;
+    const hasPredicate = Boolean(predicateId?.trim());
 
     const claimFormState = {
       subject,
@@ -259,22 +259,18 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       clearError();
       setOnchainSuccessMessage(null);
 
-      const subjectResolution: ProtocolAtomResolution =
-        subjectAtom ?? { mode: 'create', label: subjectAtomLabel(subject, subjectType) };
       const predicateResolution: ProtocolAtomResolution =
         predicateAtom ??
         {
           mode: 'create',
           label: defaultPredicateAtomLabel(predicateId!, subjectType),
         };
-      const objectResolution: ProtocolAtomResolution =
-        objectAtom ?? { mode: 'create', label: object.trim() };
 
       const result = await submit(
         claim,
-        subjectResolution,
+        { mode: 'create', label: '' },
         predicateResolution,
-        objectResolution,
+        { mode: 'create', label: '' },
         {
           subjectLabel: resolveSubjectDisplayLabel(subject, subjectType, subjectAtom),
           predicateLabel:
@@ -286,9 +282,8 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
       if (result) {
         onSave?.(claim);
         const shortHash = `${result.tripleTransactionHash.slice(0, 10)}…`;
-        const shortTripleId = `${result.tripleTermId.slice(0, 10)}…`;
         setOnchainSuccessMessage(
-          `Claim submitted on Intuition. Triple ${shortTripleId} (tx ${shortHash})`
+          `Proposed « ${result.proposedPredicateLabel} » for ${result.slotDisplayLine} on Intuition (tx ${shortHash}).`
         );
       }
     }, [
@@ -360,7 +355,14 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
     return (
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6" data-tutorial-step="claim-builder">
         <div className="flex items-center justify-between mb-6 gap-3">
-          <h2 className="text-lg font-semibold text-[var(--color-text)]">Claim Builder</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--color-text)]">
+              Ontology Proposal Builder
+            </h2>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              Propose a predicate for a type slot. The submit path writes a nested proposal, not a flat instance claim.
+            </p>
+          </div>
           <button
             type="button"
             onClick={handleClear}
@@ -484,6 +486,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
             onchainProgressLabel={progressLabel}
             onchainError={onchainError ?? onchainHint}
             onchainSuccessMessage={onchainSuccessMessage}
+            submitNetworkLabel={networkLabel}
           />
         </div>
       </div>

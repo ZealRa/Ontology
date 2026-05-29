@@ -1,4 +1,9 @@
 import { globalSearch } from '@0xintuition/sdk';
+import {
+  fetcher,
+  GetTriplesDocument,
+  type GetTriplesQuery,
+} from '@0xintuition/graphql';
 
 import { atomDisplayLabel } from './protocol-labels';
 import {
@@ -44,16 +49,42 @@ export type ProtocolGlobalSearchOptions = {
 
 const MIN_CLOSE_ATOMS = 3;
 const MIN_CLOSE_TRIPLES = 2;
-const PREFIX_ATOM_LIMIT = 30;
-const PREFIX_TRIPLE_LIMIT = 20;
-const BROAD_ATOM_LIMIT = 40;
-const BROAD_TRIPLE_LIMIT = 25;
+const PREFIX_ATOM_LIMIT = 80;
+const PREFIX_TRIPLE_LIMIT = 40;
+const BROAD_ATOM_LIMIT = 120;
+const BROAD_TRIPLE_LIMIT = 60;
+const DIRECT_ATOM_LIMIT = 120;
+const DIRECT_TRIPLE_LIMIT = 80;
 
 type ScoredAtom = ProtocolSearchAtom;
 type ScoredTriple = ProtocolSearchTriple & { score: number };
 
+type DirectAtomSearchResult = {
+  atoms?: Array<{
+    term_id?: string | null;
+    label?: string | null;
+    data?: string | null;
+    type?: string | null;
+  }>;
+};
+
+const SearchAtomsDocument = `
+  query SearchAtoms($where: atoms_bool_exp = {}, $limit: Int = 100) {
+    atoms(where: $where, limit: $limit) {
+      term_id
+      label
+      data
+      type
+    }
+  }
+`;
+
 function isValidTermId(value: string | null | undefined): value is `0x${string}` {
   return typeof value === 'string' && value.startsWith('0x');
+}
+
+function looksLikeTermIdQuery(value: string): boolean {
+  return /^0x[0-9a-fA-F]{4,}$/.test(value.trim());
 }
 
 function mapAtom(
@@ -116,6 +147,51 @@ async function fetchGlobal(
   });
 }
 
+async function fetchDirectAtoms(query: string) {
+  const trimmed = query.trim();
+  const where = looksLikeTermIdQuery(trimmed)
+    ? { term_id: { _ilike: `${trimmed}%` } }
+    : {
+        _or: [
+          { label: { _ilike: `%${trimmed}%` } },
+          { data: { _ilike: `%${trimmed}%` } },
+        ],
+      };
+
+  return (await fetcher(SearchAtomsDocument, {
+    where,
+    limit: DIRECT_ATOM_LIMIT,
+  })()) as DirectAtomSearchResult;
+}
+
+async function fetchDirectTriples(query: string) {
+  const trimmed = query.trim();
+  const where = looksLikeTermIdQuery(trimmed)
+    ? {
+        _or: [
+          { term_id: { _ilike: `${trimmed}%` } },
+          { subject_id: { _ilike: `${trimmed}%` } },
+          { predicate_id: { _ilike: `${trimmed}%` } },
+          { object_id: { _ilike: `${trimmed}%` } },
+        ],
+      }
+    : {
+        _or: [
+          { subject: { label: { _ilike: `%${trimmed}%` } } },
+          { subject: { data: { _ilike: `%${trimmed}%` } } },
+          { predicate: { label: { _ilike: `%${trimmed}%` } } },
+          { predicate: { data: { _ilike: `%${trimmed}%` } } },
+          { object: { label: { _ilike: `%${trimmed}%` } } },
+          { object: { data: { _ilike: `%${trimmed}%` } } },
+        ],
+      };
+
+  return (await fetcher(GetTriplesDocument, {
+    where,
+    limit: DIRECT_TRIPLE_LIMIT,
+  })()) as GetTriplesQuery;
+}
+
 function mergeAtoms(target: Map<string, ScoredAtom>, incoming: ScoredAtom[]) {
   for (const atom of incoming) {
     const existing = target.get(atom.termId);
@@ -143,7 +219,6 @@ function countCloseAtoms(atoms: Map<string, ScoredAtom>, query: string): number 
 function partitionResults(
   atoms: Map<string, ScoredAtom>,
   triples: Map<string, ScoredTriple>,
-  query: string,
   maxAtoms: number,
   maxTriples: number
 ): Pick<ProtocolGlobalSearchResult, 'atoms' | 'triples' | 'broadAtoms' | 'broadTriples'> {
@@ -153,16 +228,14 @@ function partitionResults(
   const closeAtoms: ProtocolSearchAtom[] = [];
   const broadAtoms: ProtocolSearchAtom[] = [];
   for (const atom of sortedAtoms) {
-    const bucket =
-      relevanceScore(atom.label, query) >= CLOSE_MATCH_SCORE ? closeAtoms : broadAtoms;
+    const bucket = atom.score >= CLOSE_MATCH_SCORE ? closeAtoms : broadAtoms;
     if (bucket.length < maxAtoms) bucket.push(atom);
   }
 
   const closeTriples: ProtocolSearchTriple[] = [];
   const broadTriples: ProtocolSearchTriple[] = [];
-  for (const { score: _score, ...triple } of sortedTriples) {
-    const rel = tripleRelevanceScore(triple, query);
-    const bucket = rel >= CLOSE_MATCH_SCORE ? closeTriples : broadTriples;
+  for (const { score, ...triple } of sortedTriples) {
+    const bucket = score >= CLOSE_MATCH_SCORE ? closeTriples : broadTriples;
     if (bucket.length < maxTriples) bucket.push(triple);
   }
 
@@ -216,6 +289,20 @@ export async function searchProtocolGlobal(
     }
   }
 
+  const [directAtoms, directTriples] = await Promise.all([
+    fetchDirectAtoms(trimmed),
+    fetchDirectTriples(trimmed),
+  ]);
+
+  for (const atom of directAtoms.atoms ?? []) {
+    const mapped = mapAtom(atom, trimmed, looksLikeTermIdQuery(trimmed) ? 60 : 10);
+    if (mapped) mergeAtoms(atoms, [mapped]);
+  }
+  for (const triple of directTriples.triples ?? []) {
+    const mapped = mapTriple(triple, trimmed, looksLikeTermIdQuery(trimmed) ? 60 : 10);
+    if (mapped) mergeTriples(triples, [mapped]);
+  }
+
   const closeAtoms = countCloseAtoms(atoms, trimmed);
   const closeTriples = [...triples.values()].filter(
     (t) => tripleRelevanceScore(t, trimmed) >= CLOSE_MATCH_SCORE
@@ -253,7 +340,7 @@ export async function searchProtocolGlobal(
     }
   }
 
-  const partitioned = partitionResults(atoms, triples, trimmed, atomsLimit, triplesLimit);
+  const partitioned = partitionResults(atoms, triples, atomsLimit, triplesLimit);
 
   return {
     ...partitioned,

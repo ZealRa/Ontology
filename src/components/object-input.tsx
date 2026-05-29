@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getObjectTypesForPredicate, PREDICATES } from '../data/predicates';
+import { getObjectTypesForPredicate } from '../data/predicates';
+import { getPredicateRule } from '../lib/intuition/predicate-resolution';
 import { ATOM_TYPES, type AtomType } from '../data/atom-types';
 import { TypeBadge } from './type-badge';
 import { LockNote } from './lock-note';
@@ -23,13 +24,17 @@ export function ObjectInput({
 }: ObjectInputProps) {
   const [showTypePicker, setShowTypePicker] = useState(false);
 
-  const expectedTypes = predicateId ? getObjectTypesForPredicate(predicateId) : [];
-  const expectedAtomTypes = expectedTypes
-    .map((id) => ATOM_TYPES.find((t) => t.id === id))
-    .filter((t): t is AtomType => t !== undefined);
+  const predicateRule = predicateId ? getPredicateRule(predicateId) : undefined;
+  const isCustomPredicate = Boolean(predicateId?.trim() && !predicateRule);
+  const expectedTypes = predicateRule
+    ? getObjectTypesForPredicate(predicateId!)
+    : [];
+  const expectedAtomTypes = (
+    isCustomPredicate ? ATOM_TYPES : expectedTypes.map((id) => ATOM_TYPES.find((t) => t.id === id))
+  ).filter((t): t is AtomType => t !== undefined);
 
   const selectedAtomType = ATOM_TYPES.find((t) => t.id === selectedType);
-  const predicate = predicateId ? PREDICATES.find((p) => p.id === predicateId) : undefined;
+  const predicate = predicateRule;
   const onlyExpected = expectedTypes.length === 1 ? expectedTypes[0] : null;
   const onlyExpectedAtom = onlyExpected
     ? ATOM_TYPES.find((t) => t.id === onlyExpected)
@@ -47,7 +52,10 @@ export function ObjectInput({
   };
 
   const needsTypeChoice =
-    !disabled && Boolean(value.trim()) && !selectedType && expectedAtomTypes.length > 1;
+    !disabled &&
+    Boolean(value.trim()) &&
+    !selectedType &&
+    (expectedAtomTypes.length > 1 || isCustomPredicate);
 
   return (
     <div className="flex flex-col gap-2">
@@ -61,9 +69,11 @@ export function ObjectInput({
           placeholder={
             disabled
               ? 'Select a predicate first'
-              : expectedTypes.length > 0
-                ? `Enter ${expectedTypes.join(' or ')}...`
-                : 'Enter object...'
+              : isCustomPredicate
+                ? 'Enter object and pick a type...'
+                : expectedTypes.length > 0
+                  ? `Enter ${expectedTypes.join(' or ')}...`
+                  : 'Enter object...'
           }
           className={`focus-ring w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-[var(--color-text)] placeholder-[var(--color-text-muted)] transition-colors focus:border-[var(--color-accent)] ${
             disabled ? 'cursor-not-allowed' : ''
@@ -93,6 +103,12 @@ export function ObjectInput({
           is valid here — per the{' '}
           <code className="text-[var(--color-text-secondary)]">{predicate.label}</code> definition.
         </LockNote>
+      )}
+
+      {isCustomPredicate && !disabled && Boolean(predicateId?.trim()) && (
+        <p className="text-xs text-[var(--color-text-muted)]">
+          Custom predicate — choose any object type that fits your claim.
+        </p>
       )}
 
       {!disabled && (showTypePicker || needsTypeChoice) && expectedAtomTypes.length > 1 && (

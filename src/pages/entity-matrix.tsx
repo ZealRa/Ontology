@@ -7,15 +7,15 @@ import { useClaimWorkspace } from '../lib/use-claim-workspace';
 
 export function EntityMatrixPage() {
   const navigate = useNavigate();
-  const { fillFromMatrix } = useClaimWorkspace();
+  const { fillOntologyPattern } = useClaimWorkspace();
   const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(new Set());
 
   const handleSelectClaim = useCallback(
     (subjectTypeId: string, predicateId: string, objectTypeId: string) => {
-      fillFromMatrix(subjectTypeId, predicateId, objectTypeId);
+      fillOntologyPattern(subjectTypeId, predicateId, objectTypeId);
       navigate('/');
     },
-    [fillFromMatrix, navigate]
+    [fillOntologyPattern, navigate]
   );
 
   const handleToggleType = useCallback((typeId: string) => {

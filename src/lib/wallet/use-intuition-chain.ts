@@ -6,12 +6,13 @@ import { useIntuitionNetwork } from './intuition-network-context';
 import { type IntuitionChainId, isIntuitionChainId } from './intuition-chain';
 
 export function useIntuitionChain() {
-  const { chainId: targetChainId, networkLabel } = useIntuitionNetwork();
+  const { chainId: targetChainId, networkLabel, isStaticNetwork } = useIntuitionNetwork();
   const { address, chainId, isConnected } = useAccount();
   const { wallets } = useWallets();
   const { switchChain, isPending: isWagmiSwitching } = useSwitchChain();
 
   const isWrongNetwork =
+    !isStaticNetwork &&
     isConnected &&
     chainId !== undefined &&
     (chainId !== targetChainId || !isIntuitionChainId(chainId));
@@ -41,6 +42,7 @@ export function useIntuitionChain() {
     isWrongNetwork,
     targetChainId,
     networkLabel,
+    isStaticNetwork,
     switchToIntuitionChain,
     /** @deprecated Use switchToIntuitionChain */
     switchToIntuitionMainnet: () => switchToIntuitionChain(targetChainId),

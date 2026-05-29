@@ -1,4 +1,13 @@
-import { getPredicatesForSubject, type PredicateRule } from '../data/predicates';
+import { useEffect, useId, useState, type KeyboardEvent } from 'react';
+
+import {
+  getPredicateRule,
+  isKnownPredicateId,
+  matchPredicateForSubject,
+  predicateDisplayLabel,
+  resolvePredicateIdFromInput,
+} from '../lib/intuition/predicate-resolution';
+import { getPredicatesForSubject } from '../data/predicates';
 import { ATOM_TYPES } from '../data/atom-types';
 import { LockNote } from './lock-note';
 
@@ -10,56 +19,105 @@ interface PredicateSelectProps {
 }
 
 export function PredicateSelect({ subjectType, value, onChange, disabled }: PredicateSelectProps) {
+  const listId = useId();
   const predicates = subjectType ? getPredicatesForSubject(subjectType) : [];
-  const selected = predicates.find((p) => p.id === value);
-  const onlyPredicate = predicates.length === 1 ? predicates[0] : null;
+  const knownRule = value ? getPredicateRule(value) : undefined;
+  const isCustom = Boolean(value?.trim() && !knownRule);
+
+  const [inputValue, setInputValue] = useState('');
+
+  useEffect(() => {
+    setInputValue(value ? predicateDisplayLabel(value) : '');
+  }, [value]);
+
+  const commitInput = (text: string) => {
+    const resolved = resolvePredicateIdFromInput(text, subjectType);
+    onChange(resolved);
+    if (resolved) {
+      setInputValue(predicateDisplayLabel(resolved));
+    }
+  };
+
+  const handleChange = (text: string) => {
+    setInputValue(text);
+    const trimmed = text.trim();
+    if (!trimmed) {
+      onChange(null);
+      return;
+    }
+    const match = matchPredicateForSubject(trimmed, subjectType);
+    if (match) {
+      onChange(match.id);
+      return;
+    }
+    onChange(trimmed);
+  };
+
+  const handleBlur = () => {
+    commitInput(inputValue);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitInput(inputValue);
+    }
+  };
+
   const subjectAtom = subjectType ? ATOM_TYPES.find((t) => t.id === subjectType) : undefined;
+  const onlyPredicate = predicates.length === 1 ? predicates[0] : null;
 
   return (
     <div className="flex flex-col gap-2">
       <label className="text-sm font-medium text-[var(--color-text-secondary)]">Predicate</label>
       <div className={`relative ${disabled ? 'opacity-60' : ''}`}>
-        <select
-          value={value ?? ''}
-          onChange={(e) => onChange(e.target.value || null)}
+        <input
+          type="text"
+          list={disabled ? undefined : listId}
+          value={inputValue}
+          onChange={(e) => handleChange(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           disabled={disabled}
-          className={`focus-ring w-full appearance-none rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-[var(--color-text-muted)] transition-colors focus:border-[var(--color-accent)] ${
-            disabled ? 'cursor-not-allowed' : 'cursor-pointer text-[var(--color-text)]'
-          }`}
-        >
-          <option value="">
-            {disabled ? 'Enter a subject first' : `Select predicate (${predicates.length} options)`}
-          </option>
-          {predicates.map((p: PredicateRule) => (
-            <option key={p.id} value={p.id} title={p.description}>
-              {p.label}
-            </option>
+          placeholder={
+            disabled
+              ? 'Enter a subject first'
+              : 'Type or pick a predicate (e.g. follows)'
+          }
+          className={`focus-ring w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-[var(--color-text)] placeholder-[var(--color-text-muted)] transition-colors focus:border-[var(--color-accent)] ${
+            disabled ? 'cursor-not-allowed' : ''
+          } ${isCustom ? 'border-[var(--color-accent)]/40' : ''}`}
+          aria-describedby={isCustom ? `${listId}-custom` : undefined}
+        />
+        <datalist id={listId}>
+          {predicates.map((p) => (
+            <option key={p.id} value={p.label} label={p.description} />
           ))}
-        </select>
-        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+        </datalist>
       </div>
 
-      {selected && (
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {selected.description}
+      {isCustom && !disabled && (
+        <p id={`${listId}-custom`} className="text-xs text-[var(--color-accent)]/90">
+          Custom predicate — will create «{value}» on-chain if needed.
         </p>
       )}
 
-      {!disabled && onlyPredicate && subjectAtom && (
+      {knownRule && (
+        <p className="text-xs text-[var(--color-text-muted)]">{knownRule.description}</p>
+      )}
+
+      {!disabled && onlyPredicate && subjectAtom && isKnownPredicateId(onlyPredicate.id) && (
         <LockNote>
-          Only <code className="text-[var(--color-text-secondary)]">{onlyPredicate.label}</code>{' '}
-          is defined for{' '}
-          <code className="text-[var(--color-text-secondary)]">{subjectAtom.label}</code> subjects.
+          Suggested for{' '}
+          <code className="text-[var(--color-text-secondary)]">{subjectAtom.label}</code>:{' '}
+          <code className="text-[var(--color-text-secondary)]">{onlyPredicate.label}</code>
+          . You can still type another predicate.
         </LockNote>
       )}
 
       {!disabled && predicates.length === 0 && subjectType && (
         <p className="text-xs text-amber-400">
-          No predicates defined for {subjectType} subjects yet.
+          No curated predicates for {subjectType} — type your own relationship.
         </p>
       )}
     </div>

@@ -17,7 +17,10 @@ const AtomTypeIdSchema = z
   .string()
   .refine((id) => ATOM_TYPE_IDS.has(id), { message: 'Unknown atom type' });
 
-const PredicateIdSchema = z
+/** Known ontology predicates or builder-typed custom labels for on-chain atoms. */
+const PredicateIdSchema = z.string().trim().min(1).max(200);
+
+const KnownPredicateIdSchema = z
   .string()
   .refine((id) => PREDICATE_IDS.has(id), { message: 'Unknown predicate' });
 
@@ -51,7 +54,7 @@ export const ClaimEntryListSchema = z.array(ClaimEntrySchema);
 export const CompactClaimSchema = z.object({
   s: EntityStringSchema,
   st: AtomTypeIdSchema,
-  p: PredicateIdSchema,
+  p: KnownPredicateIdSchema,
   o: EntityStringSchema,
   ot: AtomTypeIdSchema,
 });

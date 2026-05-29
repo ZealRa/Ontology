@@ -18,17 +18,18 @@ import {
   intuitionTestnet,
 } from './intuition-chain';
 
-export type IntuitionNetworkId = 'mainnet' | 'testnet';
+export type IntuitionNetworkId = 'mainnet' | 'testnet' | 'static';
+type OnchainIntuitionNetworkId = Exclude<IntuitionNetworkId, 'static'>;
 
 type NetworkDefinition = {
-  id: IntuitionNetworkId;
+  id: OnchainIntuitionNetworkId;
   label: string;
   chain: Chain;
   chainId: IntuitionChainId;
   graphqlUrl: string;
 };
 
-const NETWORKS: Record<IntuitionNetworkId, NetworkDefinition> = {
+const NETWORKS: Record<OnchainIntuitionNetworkId, NetworkDefinition> = {
   mainnet: {
     id: 'mainnet',
     label: 'Intuition',
@@ -46,10 +47,10 @@ const NETWORKS: Record<IntuitionNetworkId, NetworkDefinition> = {
 };
 
 function isIntuitionNetworkId(value: unknown): value is IntuitionNetworkId {
-  return value === 'mainnet' || value === 'testnet';
+  return value === 'mainnet' || value === 'testnet' || value === 'static';
 }
 
-function resolveGraphqlUrl(network: IntuitionNetworkId): string {
+function resolveGraphqlUrl(network: OnchainIntuitionNetworkId): string {
   const envUrl = import.meta.env.VITE_INTUITION_GRAPHQL_URL;
   if (typeof envUrl === 'string' && envUrl.length > 0) return envUrl;
   return NETWORKS[network].graphqlUrl;
@@ -62,6 +63,7 @@ type IntuitionNetworkContextValue = {
   chainId: IntuitionChainId;
   networkLabel: string;
   graphqlUrl: string;
+  isStaticNetwork: boolean;
 };
 
 const IntuitionNetworkContext = createContext<IntuitionNetworkContextValue | null>(null);
@@ -73,12 +75,18 @@ export function IntuitionNetworkProvider({ children }: { children: ReactNode }) 
     { validate: isIntuitionNetworkId }
   );
 
-  const definition = NETWORKS[network];
-  const graphqlUrl = useMemo(() => resolveGraphqlUrl(network), [network]);
+  const isStaticNetwork = network === 'static';
+  const onchainNetwork: OnchainIntuitionNetworkId = isStaticNetwork ? 'mainnet' : network;
+  const definition = NETWORKS[onchainNetwork];
+  const graphqlUrl = useMemo(
+    () => (isStaticNetwork ? '' : resolveGraphqlUrl(onchainNetwork)),
+    [isStaticNetwork, onchainNetwork]
+  );
 
   useEffect(() => {
+    if (isStaticNetwork) return;
     configureClient({ apiUrl: graphqlUrl });
-  }, [graphqlUrl]);
+  }, [graphqlUrl, isStaticNetwork]);
 
   const setNetwork = useCallback((next: IntuitionNetworkId) => {
     setNetworkState(next);
@@ -90,10 +98,11 @@ export function IntuitionNetworkProvider({ children }: { children: ReactNode }) 
       setNetwork,
       activeChain: definition.chain,
       chainId: definition.chainId,
-      networkLabel: definition.label,
+      networkLabel: isStaticNetwork ? 'Static ontology' : definition.label,
       graphqlUrl,
+      isStaticNetwork,
     }),
-    [network, setNetwork, definition, graphqlUrl]
+    [network, setNetwork, definition, graphqlUrl, isStaticNetwork]
   );
 
   return (

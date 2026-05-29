@@ -6,11 +6,12 @@ import { usePublicClient, useWalletClient } from 'wagmi';
 import { useIntuitionNetwork } from '../wallet/intuition-network-context';
 
 export function useIntuitionWriteConfig(): WriteConfig | null {
-  const { chainId } = useIntuitionNetwork();
+  const { chainId, isStaticNetwork } = useIntuitionNetwork();
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient();
 
   return useMemo(() => {
+    if (isStaticNetwork) return null;
     if (!publicClient || !walletClient) return null;
 
     return {
@@ -18,5 +19,5 @@ export function useIntuitionWriteConfig(): WriteConfig | null {
       publicClient,
       walletClient,
     } satisfies WriteConfig;
-  }, [publicClient, walletClient, chainId]);
+  }, [publicClient, walletClient, chainId, isStaticNetwork]);
 }

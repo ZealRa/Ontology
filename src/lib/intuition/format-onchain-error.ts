@@ -66,22 +66,29 @@ export function formatOnchainError(
   const raw = collectErrorText(error);
   const claimLine = claimContextFromLabels(context);
 
-  if (/MultiVault_TripleExists/i.test(raw)) {
+  if (/MultiVault_TripleExists/i.test(raw) || /already proposed for slot/i.test(raw)) {
+    const isOntologyMeta = /already proposed for slot/i.test(raw);
     return {
-      title: 'This claim already exists',
-      description: claimLine
-        ? `The triple « ${claimLine} » is already registered on Intuition. Creating it again is not allowed.`
-        : 'This subject–predicate–object combination is already registered on Intuition. Creating it again is not allowed.',
-      hint: 'Open Protocol search to find the existing triple, or stake on it instead of submitting a duplicate.',
+      title: isOntologyMeta ? 'This predicate is already proposed' : 'This claim already exists',
+      description: isOntologyMeta
+        ? raw.includes('«')
+          ? raw.replace(/^[^:]+:\s*/i, '').trim()
+          : 'This predicate was already proposed for this ontology slot on Intuition.'
+        : claimLine
+          ? `The triple « ${claimLine} » is already registered on Intuition. Creating it again is not allowed.`
+          : 'This subject–predicate–object combination is already registered on Intuition.',
+      hint: isOntologyMeta
+        ? 'Open the matrix menu for this slot to see existing proposals, or pick a different predicate.'
+        : 'Open Protocol search to find the existing triple, or stake on it instead of submitting a duplicate.',
     };
   }
 
   if (/MultiVault_AtomExists/i.test(raw)) {
     return {
-      title: 'This atom already exists',
+      title: 'Atom already exists',
       description:
-        'One of the atoms in your claim is already on-chain under the same identity. Try selecting the existing atom in the suggestions list.',
-      hint: 'Use the on-chain atom picker (subject, predicate, or object) and choose an existing match.',
+        'One of the atoms needed for this ontology proposal already exists on-chain. The app should reuse it instead of creating it again.',
+      hint: 'Refresh the suggestions and choose the existing atom. If this keeps happening, wait a few seconds for the indexer and try again.',
     };
   }
 
@@ -98,6 +105,15 @@ export function formatOnchainError(
       description:
         'Your wallet does not have enough TRUST to cover atom creation, the triple, and the minimum vault deposit.',
       hint: 'Add TRUST on the selected network (mainnet or testnet) and try again.',
+    };
+  }
+
+  if (/timeout|timed out|indexing|wait.*transaction|transaction receipt/i.test(raw)) {
+    return {
+      title: 'Indexer is still catching up',
+      description:
+        'The transaction may have been sent, but the app could not confirm the indexed atom or triple yet.',
+      hint: 'Wait a few seconds, then refresh the matrix or search by the transaction/term id before submitting again.',
     };
   }
 
