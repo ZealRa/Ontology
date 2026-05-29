@@ -355,7 +355,14 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
     return (
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6" data-tutorial-step="claim-builder">
         <div className="flex items-center justify-between mb-6 gap-3">
-          <h2 className="text-lg font-semibold text-[var(--color-text)]">Claim Builder</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--color-text)]">
+              Ontology Proposal Builder
+            </h2>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              Propose a predicate for a type slot. The submit path writes a nested proposal, not a flat instance claim.
+            </p>
+          </div>
           <button
             type="button"
             onClick={handleClear}
@@ -479,6 +486,7 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
             onchainProgressLabel={progressLabel}
             onchainError={onchainError ?? onchainHint}
             onchainSuccessMessage={onchainSuccessMessage}
+            submitNetworkLabel={networkLabel}
           />
         </div>
       </div>

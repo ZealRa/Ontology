@@ -85,10 +85,10 @@ export function formatOnchainError(
 
   if (/MultiVault_AtomExists/i.test(raw)) {
     return {
-      title: 'This atom already exists',
+      title: 'Atom already exists',
       description:
-        'One of the atoms in your claim is already on-chain under the same identity. Try selecting the existing atom in the suggestions list.',
-      hint: 'Use the on-chain atom picker (subject, predicate, or object) and choose an existing match.',
+        'One of the atoms needed for this ontology proposal already exists on-chain. The app should reuse it instead of creating it again.',
+      hint: 'Refresh the suggestions and choose the existing atom. If this keeps happening, wait a few seconds for the indexer and try again.',
     };
   }
 
@@ -105,6 +105,15 @@ export function formatOnchainError(
       description:
         'Your wallet does not have enough TRUST to cover atom creation, the triple, and the minimum vault deposit.',
       hint: 'Add TRUST on the selected network (mainnet or testnet) and try again.',
+    };
+  }
+
+  if (/timeout|timed out|indexing|wait.*transaction|transaction receipt/i.test(raw)) {
+    return {
+      title: 'Indexer is still catching up',
+      description:
+        'The transaction may have been sent, but the app could not confirm the indexed atom or triple yet.',
+      hint: 'Wait a few seconds, then refresh the matrix or search by the transaction/term id before submitting again.',
     };
   }
 

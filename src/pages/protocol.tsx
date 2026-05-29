@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { portalAtomUrl, portalTripleUrl } from '../lib/intuition/portal';
 import type { ProtocolSearchAtom, ProtocolSearchTriple } from '../lib/intuition/search-protocol';
 import { useProtocolGlobalSearch } from '../lib/intuition/use-protocol-global-search';
+import { useIntuitionNetwork } from '../lib/wallet/intuition-network-context';
 
 type ResultFilter = 'all' | 'atoms' | 'triples';
 
@@ -14,6 +15,7 @@ const EXAMPLE_QUERIES = ['trust', 'follow', 'ethereum', 'Person'];
  * @see https://www.docs.intuition.systems/docs/intuition-sdk/search-guide
  */
 export function ProtocolPage() {
+  const { isStaticNetwork, networkLabel } = useIntuitionNetwork();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
   const [resultFilter, setResultFilter] = useState<ResultFilter>('all');
@@ -79,10 +81,15 @@ export function ProtocolPage() {
           )}
         </div>
         <p className="text-sm text-[var(--color-text-secondary)] max-w-2xl">
-          Search live atoms and triples on Intuition Mainnet. Exact and prefix matches are
+          Search live atoms and triples on {isStaticNetwork ? 'the selected live Intuition network' : networkLabel}. Exact and prefix matches are
           ranked first; buried substring hits (e.g. «zet» inside long URLs) stay in optional
           broader results.
         </p>
+        {isStaticNetwork && (
+          <p className="text-xs text-amber-300/90">
+            Static mode is for local reference views. Switch to Mainnet or Testnet before relying on live protocol results.
+          </p>
+        )}
       </header>
 
       <div className="flex flex-wrap items-center gap-3">

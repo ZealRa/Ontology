@@ -11,6 +11,10 @@ import {
   isFormattedOnchainError,
   type FormattedOnchainError,
 } from '../lib/intuition/format-onchain-error';
+import {
+  ONTOLOGY_META_PREDICATE_LABEL,
+  ONTOLOGY_SLOT_PREDICATE_LABEL,
+} from '../lib/intuition/ontology-vocabulary';
 import { OnchainSubmitError } from './onchain-submit-error';
 
 interface ClaimPreviewProps extends ClaimFormState {
@@ -28,6 +32,7 @@ interface ClaimPreviewProps extends ClaimFormState {
   onchainProgressLabel?: string | null;
   onchainError?: string | FormattedOnchainError | null;
   onchainSuccessMessage?: string | null;
+  submitNetworkLabel?: string;
 }
 
 export function ClaimPreview({
@@ -51,6 +56,7 @@ export function ClaimPreview({
   onchainProgressLabel,
   onchainError,
   onchainSuccessMessage,
+  submitNetworkLabel = 'the selected Intuition network',
 }: ClaimPreviewProps) {
   const formState: ClaimFormState = {
     subject,
@@ -64,7 +70,6 @@ export function ClaimPreview({
   const showPreview = subjectType !== null || subjectLabel.trim().length > 0;
   if (!showPreview) return null;
 
-  const hasSubject = subjectLabel.trim().length > 0;
   const hasPredicate = Boolean(predicateId?.trim());
   const hasObject = objectLabel.trim().length > 0;
 
@@ -109,12 +114,14 @@ export function ClaimPreview({
   const displayedPredicate = hasPredicate && predicateLabel.trim()
     ? predicateLabel
     : '___';
-  const displayedSubject = isSelf ? 'I' : subjectLabel;
+  const slotSubjectLabel = subjectAtomType?.label ?? subjectType ?? '___';
+  const slotObjectLabel = objectAtomType?.label ?? objectType ?? '___';
+  const slotLine = `${slotSubjectLabel} — ${ONTOLOGY_SLOT_PREDICATE_LABEL} — ${slotObjectLabel}`;
 
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-4">
       <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mb-2">
-        <span>Claim Preview</span>
+        <span>Ontology Proposal Preview</span>
         {showActions && (
           <span
             className={`text-xs font-medium ${
@@ -146,12 +153,36 @@ export function ClaimPreview({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 font-mono text-base">
-        <span style={{ color: subjectColor }}>{hasSubject ? displayedSubject : '___'}</span>
-        <span className="text-[var(--color-text-muted)]">—</span>
-        <span className="text-[var(--color-accent)]">{displayedPredicate}</span>
-        <span className="text-[var(--color-text-muted)]">—</span>
-        <span style={{ color: objectColor }}>{hasObject ? objectLabel : '___'}</span>
+      <div className="space-y-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            Slot
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-sm">
+            <span style={{ color: subjectColor }}>{slotSubjectLabel}</span>
+            <span className="text-[var(--color-text-muted)]">—</span>
+            <span className="text-[var(--color-accent)]">{ONTOLOGY_SLOT_PREDICATE_LABEL}</span>
+            <span className="text-[var(--color-text-muted)]">—</span>
+            <span style={{ color: objectColor }}>{slotObjectLabel}</span>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            Nested proposal
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-sm">
+            <span className="text-[var(--color-accent)]">{displayedPredicate}</span>
+            <span className="text-[var(--color-text-muted)]">—</span>
+            <span className="text-[var(--color-text)]">{ONTOLOGY_META_PREDICATE_LABEL}</span>
+            <span className="text-[var(--color-text-muted)]">—</span>
+            <span className="text-[var(--color-text-secondary)]">{slotLine}</span>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+          This does not submit a flat instance claim. It proposes the predicate for the ontology slot.
+        </p>
       </div>
 
       {(subjectTermId || predicateTermId || objectTermId) && (
@@ -184,7 +215,7 @@ export function ClaimPreview({
         <>
           {structurallyComplete && isValid && (
             <p className="mt-2 text-xs text-emerald-400/70">
-              {displayedSubject} ({subjectType}) {displayedPredicate} {objectLabel} ({objectType})
+              Ready to propose « {displayedPredicate} » for the slot « {slotLine} ».
             </p>
           )}
 
@@ -221,12 +252,12 @@ export function ClaimPreview({
                     : !isValid
                       ? validationMessage || 'Fix claim validity before submitting on-chain'
                       : !canSubmitOnchain
-                        ? 'Connect your wallet on Intuition Mainnet'
+                        ? `Connect your wallet on ${submitNetworkLabel}`
                         : undefined
                 }
                 className="focus-ring rounded-md px-3 py-1.5 text-xs font-medium bg-emerald-500 text-black hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmittingOnchain ? 'Submitting…' : 'Submit on-chain'}
+                {isSubmittingOnchain ? 'Submitting…' : 'Propose predicate on-chain'}
               </button>
             )}
             {onSave && (

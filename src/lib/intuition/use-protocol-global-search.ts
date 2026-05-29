@@ -1,7 +1,9 @@
+import { configureClient } from '@0xintuition/graphql';
 import { useEffect, useState } from 'react';
 
 import { PROTOCOL_SEARCH_DEBOUNCE_MS } from '../timings';
 import { useDebounce } from '../use-debounce';
+import { useIntuitionNetwork } from '../wallet/intuition-network-context';
 import {
   searchProtocolGlobal,
   type ProtocolGlobalSearchOptions,
@@ -21,6 +23,7 @@ export function useProtocolGlobalSearch(
   enabled: boolean,
   options?: ProtocolGlobalSearchOptions
 ) {
+  const { graphqlUrl, isStaticNetwork } = useIntuitionNetwork();
   const debouncedQuery = useDebounce(query, PROTOCOL_SEARCH_DEBOUNCE_MS);
   const [results, setResults] = useState<ProtocolGlobalSearchResult>(EMPTY);
   const [isSearching, setIsSearching] = useState(false);
@@ -37,6 +40,9 @@ export function useProtocolGlobalSearch(
     let cancelled = false;
     setIsSearching(true);
     setError(null);
+    if (!isStaticNetwork && graphqlUrl) {
+      configureClient({ apiUrl: graphqlUrl });
+    }
 
     void searchProtocolGlobal(debouncedQuery, options)
       .then((data) => {
@@ -55,7 +61,14 @@ export function useProtocolGlobalSearch(
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, enabled, options?.atomsLimit, options?.triplesLimit]);
+  }, [
+    debouncedQuery,
+    enabled,
+    graphqlUrl,
+    isStaticNetwork,
+    options?.atomsLimit,
+    options?.triplesLimit,
+  ]);
 
   return { results, isSearching, error, debouncedQuery };
 }
